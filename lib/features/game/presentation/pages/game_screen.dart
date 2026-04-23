@@ -21,12 +21,13 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   int _score = 0;
-  int _misses = 0;
+  int _gameTimeRemaining = 0;
   bool _isGameRunning = false;
   final List<PestModel> _activePests = [];
   final List<SplatterModel> _activeSplatters = [];
   final Map<int, Timer> _pestTimers = {};
   Timer? _spawnTimer;
+  Timer? _gameCountdownTimer;
   final Random _random = Random();
   int _pestIdCounter = 0;
   int _splatterIdCounter = 0;
@@ -46,6 +47,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _cleanupTimers() {
     _spawnTimer?.cancel();
     _spawnTimer = null;
+    _gameCountdownTimer?.cancel();
+    _gameCountdownTimer = null;
     for (var timer in _pestTimers.values) {
       timer.cancel();
     }
@@ -56,28 +59,62 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _cleanupTimers();
     setState(() {
       _score = 0;
-      _misses = 0;
+      _gameTimeRemaining = 30 + _random.nextInt(16); // 30-50 seconds
       _activePests.clear();
       _activeSplatters.clear();
       _isGameRunning = true;
     });
-    spawnPest();
+
+    // Spawn initial burst of pests
+    int initialBurst = 2 + _random.nextInt(3);
+    for (int i = 0; i < initialBurst; i++) {
+      spawnPest();
+    }
+
     _startSpawning();
+    _startGameCountdown();
+  }
+
+  void _startGameCountdown() {
+    _gameCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!_isGameRunning) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_gameTimeRemaining > 0) {
+          _gameTimeRemaining--;
+        } else {
+          _endGame();
+          timer.cancel();
+        }
+      });
+    });
   }
 
   void _startSpawning() {
     if (!_isGameRunning) return;
 
     double difficulty = _score / 10.0;
-    int spawnInterval = (700 - (difficulty * 50)).clamp(300, 700).toInt();
+    int spawnInterval = (800 - (difficulty * 50)).clamp(400, 800).toInt();
 
     _spawnTimer = Timer(Duration(milliseconds: spawnInterval), () {
       if (_isGameRunning) {
-        spawnPest();
+        // Occasionally spawn multiple pests at once
+        int count = 1;
+        double multiSpawnChance = 0.3 + (difficulty * 0.05).clamp(0, 0.4);
+        if (_random.nextDouble() < multiSpawnChance) {
+          count = 2 + _random.nextInt(2); // 2 or 3
+        }
+
+        for (int i = 0; i < count; i++) {
+          spawnPest();
+        }
         _startSpawning();
       }
     });
   }
+
 
   void spawnPest() {
     final id = _pestIdCounter++;
@@ -118,17 +155,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _removePestById(int id, {bool wasMissed = false}) {
     if (!_isGameRunning) return;
     setState(() {
-      int index = _activePests.indexWhere((p) => p.id == id);
-      if (index != -1) {
-        final pest = _activePests[index];
-        if (wasMissed && !pest.isHit) {
-          _activePests.removeAt(index);
-          _misses++;
-          if (_misses >= 10) _endGame();
-        } else if (!wasMissed) {
-          _activePests.removeAt(index);
-        }
-      }
+      _activePests.removeWhere((p) => p.id == id);
     });
   }
 
@@ -200,7 +227,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _statLabel('score', '$_score'),
-                      _statLabel('misses', '$_misses', color: Colors.redAccent),
+                      _statLabel('time', '$_gameTimeRemaining', color: Colors.orangeAccent),
                     ],
                   ),
                 ),
