@@ -10,9 +10,8 @@ class TapToPestsApp extends StatelessWidget {
       title: 'Tap To Pests',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, brightness: Brightness.dark),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE6F7F1), brightness: Brightness.light),
         useMaterial3: true,
-        fontFamily: 'Inter',
       ),
       home: const MainScreenController(),
     );

@@ -5,15 +5,15 @@ class PestModel {
   final Alignment alignment;
   final Offset startOffset;
   final double size;
-  final String imagePath;
+  final Color color;
   bool isHit;
 
   PestModel({
     required this.id,
     required this.alignment,
     required this.startOffset,
-    required this.imagePath,
-    this.size = 120.0,
+    required this.color,
+    this.size = 150.0,
     this.isHit = false,
   });
 }

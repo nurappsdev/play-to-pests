@@ -7,9 +7,7 @@ import 'package:vibration/vibration.dart';
 import '../../../../main_bindings.dart';
 import '../../../score/domain/entities/score_entity.dart';
 import '../../domain/entities/pest_model.dart';
-import '../../domain/entities/splatter_model.dart';
 import '../widgets/pest_widget.dart';
-import '../widgets/splatter_widget.dart';
 
 class GameScreen extends StatefulWidget {
   final VoidCallback onQuitPressed;
@@ -21,16 +19,13 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   int _score = 0;
-  int _gameTimeRemaining = 0;
+  int _gameTimeRemaining = 30;
   bool _isGameRunning = false;
   final List<PestModel> _activePests = [];
-  final List<SplatterModel> _activeSplatters = [];
-  final Map<int, Timer> _pestTimers = {};
-  Timer? _spawnTimer;
-  Timer? _gameCountdownTimer;
   final Random _random = Random();
   int _pestIdCounter = 0;
-  int _splatterIdCounter = 0;
+  Timer? _spawnTimer;
+  Timer? _gameCountdownTimer;
 
   @override
   void initState() {
@@ -49,27 +44,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _spawnTimer = null;
     _gameCountdownTimer?.cancel();
     _gameCountdownTimer = null;
-    for (var timer in _pestTimers.values) {
-      timer.cancel();
-    }
-    _pestTimers.clear();
   }
 
   void _startGame() {
     _cleanupTimers();
     setState(() {
       _score = 0;
-      _gameTimeRemaining = 30 + _random.nextInt(16); // 30-50 seconds
+      _gameTimeRemaining = 30;
       _activePests.clear();
-      _activeSplatters.clear();
       _isGameRunning = true;
     });
-
-    // Spawn initial burst of pests
-    int initialBurst = 2 + _random.nextInt(3);
-    for (int i = 0; i < initialBurst; i++) {
-      spawnPest();
-    }
 
     _startSpawning();
     _startGameCountdown();
@@ -95,26 +79,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _startSpawning() {
     if (!_isGameRunning) return;
 
-    double difficulty = _score / 10.0;
-    int spawnInterval = (800 - (difficulty * 50)).clamp(400, 800).toInt();
+    int elapsed = 30 - _gameTimeRemaining;
+    int spawnCount;
 
-    _spawnTimer = Timer(Duration(milliseconds: spawnInterval), () {
-      if (_isGameRunning) {
-        // Occasionally spawn multiple pests at once
-        int count = 1;
-        double multiSpawnChance = 0.3 + (difficulty * 0.05).clamp(0, 0.4);
-        if (_random.nextDouble() < multiSpawnChance) {
-          count = 2 + _random.nextInt(2); // 2 or 3
-        }
+    if (elapsed <= 8) {
+      spawnCount = 2 + _random.nextInt(2); // 2-3 pests
+    } else if (elapsed <= 18) {
+      spawnCount = 4 + _random.nextInt(2); // 4-5 pests
+    } else {
+      spawnCount = 5 + _random.nextInt(3); // 5-7 pests
+    }
 
-        for (int i = 0; i < count; i++) {
-          spawnPest();
-        }
-        _startSpawning();
-      }
-    });
+    for (int i = 0; i < spawnCount; i++) {
+      // Small delay between spawns within the same second for better feel
+      Future.delayed(Duration(milliseconds: _random.nextInt(800)), () {
+        if (_isGameRunning) spawnPest();
+      });
+    }
+
+    _spawnTimer = Timer(const Duration(seconds: 1), _startSpawning);
   }
-
 
   void spawnPest() {
     final id = _pestIdCounter++;
@@ -123,39 +107,37 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _random.nextDouble() * 1.6 - 0.8,
     );
 
-    final sides = [
-      const Offset(-1.5, 0),
-      const Offset(1.5, 0),
-      const Offset(0, -1.5),
-      const Offset(0, 1.5),
-    ];
-    final startOffset = sides[_random.nextInt(sides.length)];
-    final imagePath = _random.nextBool() ? 'assets/images/insect_1.png' : 'assets/images/insect_1.png';
+    final colors = [Colors.yellow, Colors.orange, Colors.red, Colors.green];
+    final color = colors[_random.nextInt(colors.length)];
+
+    int elapsed = 30 - _gameTimeRemaining;
 
     setState(() {
       _activePests.add(PestModel(
         id: id,
         alignment: alignment,
-        startOffset: startOffset,
-        imagePath: imagePath,
+        startOffset: Offset(_random.nextDouble() * 3 - 1.5, _random.nextDouble() * 3 - 1.5),
+        color: color,
+        size: 150.0,
       ));
     });
 
-    double difficulty = _score / 10.0;
-    int deSpawnDuration = (2000 - (difficulty * 150)).clamp(800, 2000).toInt();
+    // De-spawn duration (time on screen)
+    int deSpawnDuration;
+    if (elapsed <= 8) {
+      deSpawnDuration = 2000;
+    } else if (elapsed <= 18) {
+      deSpawnDuration = 1500;
+    } else {
+      deSpawnDuration = 1000; // Faster de-spawn in late game
+    }
 
-    _pestTimers[id] = Timer(Duration(milliseconds: deSpawnDuration), () {
-      _pestTimers.remove(id);
+    Timer(Duration(milliseconds: deSpawnDuration), () {
       if (_isGameRunning) {
-        _removePestById(id, wasMissed: true);
+        setState(() {
+          _activePests.removeWhere((p) => p.id == id && !p.isHit);
+        });
       }
-    });
-  }
-
-  void _removePestById(int id, {bool wasMissed = false}) {
-    if (!_isGameRunning) return;
-    setState(() {
-      _activePests.removeWhere((p) => p.id == id);
     });
   }
 
@@ -163,28 +145,30 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     int index = _activePests.indexWhere((p) => p.id == id);
     if (index == -1 || _activePests[index].isHit) return;
 
-    final pest = _activePests[index];
+    _activePests[index].isHit = true;
 
+    // Vibration
     Vibration.hasVibrator().then((hasVibrator) {
       if (hasVibrator == true) {
-        Vibration.vibrate(duration: 100, amplitude: 128);
+        Vibration.vibrate(duration: 50, amplitude: 64); // Light vibration
       } else {
-        HapticFeedback.heavyImpact();
+        HapticFeedback.lightImpact();
       }
     });
 
-    _pestTimers[id]?.cancel();
-    _pestTimers.remove(id);
+    // Pop Sound - Sound will be added here
 
     setState(() {
-      _activeSplatters.add(SplatterModel(
-        id: _splatterIdCounter++,
-        alignment: pest.alignment,
-        color: pest.imagePath.contains('1') ? Colors.greenAccent : Colors.orangeAccent,
-      ));
-
-      _activePests.removeAt(index);
       _score++;
+    });
+
+    // The widget will handle its own disappearance after animation
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        setState(() {
+          _activePests.removeWhere((p) => p.id == id);
+        });
+      }
     });
   }
 
@@ -205,102 +189,94 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset('assets/images/backgrounds.png', fit: BoxFit.cover),
-          SafeArea(
-            child: Stack(
-              children: [
-                Positioned(
-                  top: 10,
-                  right: 20,
-                  child: IconButton(
-                    icon: const Icon(Icons.pause_circle_filled, size: 40, color: Colors.white),
-                    onPressed: _endGame,
-                  ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE6F7F1), Color(0xFFCFEEE3)],
+          ),
+        ),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              // UI Stats
+              Positioned(
+                top: 20,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _statLabel('SCORE: $_score'),
+                    const SizedBox(width: 20),
+                    _statLabel('TIME: $_gameTimeRemaining', isAlert: _gameTimeRemaining < 10),
+                  ],
                 ),
-                Positioned(
-                  top: 20,
-                  left: 20,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _statLabel('score', '$_score'),
-                      _statLabel('time', '$_gameTimeRemaining', color: Colors.orangeAccent),
-                    ],
-                  ),
-                ),
-                ..._activeSplatters.map((splatter) => SplatterWidget(
-                  key: ValueKey('splatter_${splatter.id}'),
-                  splatter: splatter,
-                  onComplete: () {
-                    setState(() {
-                      _activeSplatters.removeWhere((s) => s.id == splatter.id);
-                    });
-                  },
-                )),
-                ..._activePests.map((pest) => PestWidget(
-                  key: ValueKey(pest.id),
-                  pest: pest,
-                  onTap: () => _handleHit(pest.id),
-                )),
-                if (!_isGameRunning)
-                  Center(
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 0.8,
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.greenAccent, width: 2),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('GAME OVER',
-                              style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white)),
-                          const SizedBox(height: 16),
-                          Text('FINAL SCORE: $_score', style: const TextStyle(fontSize: 24, color: Colors.greenAccent)),
-                          const SizedBox(height: 32),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              ElevatedButton(
-                                onPressed: widget.onQuitPressed,
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.white10),
-                                child: const Text('QUIT'),
-                              ),
-                              ElevatedButton(
-                                onPressed: _startGame,
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.greenAccent, foregroundColor: Colors.black),
-                                child: const Text('RETRY'),
-                              ),
-                            ],
+              ),
+
+              // Game Layer
+              ..._activePests.map((pest) => PestWidget(
+                    key: ValueKey(pest.id),
+                    pest: pest,
+                    onTap: () => _handleHit(pest.id),
+                  )),
+
+              // Game Over Layer
+              if (!_isGameRunning)
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 30),
+                    padding: const EdgeInsets.all(40),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, spreadRadius: 5),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('SCORE', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey)),
+                        Text('$_score', style: const TextStyle(fontSize: 80, fontWeight: FontWeight.w900, color: Colors.black)),
+                        const SizedBox(height: 30),
+                        ElevatedButton(
+                          onPressed: _startGame,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFCFEEE3),
+                            foregroundColor: Colors.black,
+                            minimumSize: const Size(double.infinity, 60),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                            elevation: 0,
                           ),
-                        ],
-                      ),
+                          child: const Text('RETRY', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(height: 15),
+                        TextButton(
+                          onPressed: widget.onQuitPressed,
+                          child: const Text('HOME', style: TextStyle(color: Colors.grey)),
+                        ),
+                      ],
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _statLabel(String label, String value, {Color color = Colors.white}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.5)),
+  Widget _statLabel(String text, {bool isAlert = false}) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w900,
+        color: isAlert ? Colors.red : Colors.black.withOpacity(0.6),
       ),
-      child: Text('$label - $value', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
     );
   }
 }
+
