@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:vibration/vibration.dart';
 import '../../../../main_bindings.dart';
 import '../../../score/domain/entities/score_entity.dart';
 import '../../domain/entities/pest_model.dart';
@@ -113,13 +111,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     int elapsed = 30 - _gameTimeRemaining;
 
     setState(() {
-      _activePests.add(PestModel(
-        id: id,
-        alignment: alignment,
-        startOffset: Offset(_random.nextDouble() * 3 - 1.5, _random.nextDouble() * 3 - 1.5),
-        color: color,
-        size: 150.0,
-      ));
+      _activePests.add(
+        PestModel(
+          id: id,
+          alignment: alignment,
+          startOffset: Offset(
+            _random.nextDouble() * 3 - 1.5,
+            _random.nextDouble() * 3 - 1.5,
+          ),
+          color: color,
+          size: 185.0,
+        ),
+      );
     });
 
     // De-spawn duration (time on screen)
@@ -142,21 +145,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _handleHit(int id) async {
+    if (!_isGameRunning) return;
     int index = _activePests.indexWhere((p) => p.id == id);
     if (index == -1 || _activePests[index].isHit) return;
 
     _activePests[index].isHit = true;
-
-    // Vibration
-    Vibration.hasVibrator().then((hasVibrator) {
-      if (hasVibrator == true) {
-        Vibration.vibrate(duration: 50, amplitude: 64); // Light vibration
-      } else {
-        HapticFeedback.lightImpact();
-      }
-    });
-
-    // Pop Sound - Sound will be added here
 
     setState(() {
       _score++;
@@ -179,10 +172,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _cleanupTimers();
 
     if (_score > 0) {
-      await MainBindings.saveScoreUseCase.execute(ScoreEntity(
-        score: _score,
-        dateTime: DateTime.now(),
-      ));
+      await MainBindings.saveScoreUseCase.execute(
+        ScoreEntity(score: _score, dateTime: DateTime.now()),
+      );
     }
   }
 
@@ -210,17 +202,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   children: [
                     _statLabel('SCORE: $_score'),
                     const SizedBox(width: 20),
-                    _statLabel('TIME: $_gameTimeRemaining', isAlert: _gameTimeRemaining < 10),
+                    _statLabel(
+                      'TIME: $_gameTimeRemaining',
+                      isAlert: _gameTimeRemaining < 10,
+                    ),
                   ],
                 ),
               ),
 
               // Game Layer
-              ..._activePests.map((pest) => PestWidget(
-                    key: ValueKey(pest.id),
-                    pest: pest,
-                    onTap: () => _handleHit(pest.id),
-                  )),
+              ..._activePests.map(
+                (pest) => PestWidget(
+                  key: ValueKey(pest.id),
+                  pest: pest,
+                  onTap: () => _handleHit(pest.id),
+                  enabled: _isGameRunning,
+                ),
+              ),
 
               // Game Over Layer
               if (!_isGameRunning)
@@ -232,14 +230,32 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, spreadRadius: 5),
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
                       ],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('SCORE', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey)),
-                        Text('$_score', style: const TextStyle(fontSize: 80, fontWeight: FontWeight.w900, color: Colors.black)),
+                        const Text(
+                          'SCORE',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        Text(
+                          '$_score',
+                          style: const TextStyle(
+                            fontSize: 80,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black,
+                          ),
+                        ),
                         const SizedBox(height: 30),
                         ElevatedButton(
                           onPressed: _startGame,
@@ -247,15 +263,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                             backgroundColor: const Color(0xFFCFEEE3),
                             foregroundColor: Colors.black,
                             minimumSize: const Size(double.infinity, 60),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
                             elevation: 0,
                           ),
-                          child: const Text('RETRY', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          child: const Text(
+                            'RETRY',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 15),
                         TextButton(
                           onPressed: widget.onQuitPressed,
-                          child: const Text('HOME', style: TextStyle(color: Colors.grey)),
+                          child: const Text(
+                            'HOME',
+                            style: TextStyle(color: Colors.grey),
+                          ),
                         ),
                       ],
                     ),
@@ -274,9 +301,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       style: TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.w900,
-        color: isAlert ? Colors.red : Colors.black.withOpacity(0.6),
+        color: isAlert ? Colors.red : Colors.black.withValues(alpha: 0.6),
       ),
     );
   }
 }
-

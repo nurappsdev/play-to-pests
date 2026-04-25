@@ -13,7 +13,7 @@ class PestModel {
     required this.alignment,
     required this.startOffset,
     required this.color,
-    this.size = 150.0,
+    this.size = 185.0,
     this.isHit = false,
   });
 }

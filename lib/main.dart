@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import 'app.dart';
 import 'main_bindings.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  MainBindings.init();
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  await MainBindings.init();
   runApp(const TapToPestsApp());
 }
