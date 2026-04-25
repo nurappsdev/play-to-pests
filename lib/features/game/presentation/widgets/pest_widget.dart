@@ -31,9 +31,10 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    final driftSpeedMultiplier = widget.pest.driftSpeedMultiplier;
     _velocity = Offset(
-      (_random.nextDouble() - 0.5) * 0.003,
-      (_random.nextDouble() - 0.5) * 0.003,
+      (_random.nextDouble() - 0.5) * 0.003 * driftSpeedMultiplier,
+      (_random.nextDouble() - 0.5) * 0.003 * driftSpeedMultiplier,
     );
     _ticker = createTicker(_onTick)..start();
   }
@@ -51,12 +52,14 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
       _driftOffset += _velocity;
 
       if (_random.nextDouble() < 0.02) {
+        final driftSpeedMultiplier = widget.pest.driftSpeedMultiplier;
         _velocity += Offset(
-          (_random.nextDouble() - 0.5) * 0.001,
-          (_random.nextDouble() - 0.5) * 0.001,
+          (_random.nextDouble() - 0.5) * 0.001 * driftSpeedMultiplier,
+          (_random.nextDouble() - 0.5) * 0.001 * driftSpeedMultiplier,
         );
-        if (_velocity.distance > 0.006) {
-          _velocity = _velocity / _velocity.distance * 0.006;
+        final maxVelocity = 0.006 * driftSpeedMultiplier;
+        if (_velocity.distance > maxVelocity) {
+          _velocity = _velocity / _velocity.distance * maxVelocity;
         }
       }
     });
@@ -98,7 +101,7 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
                     return _Particle(color: color, angle: angle);
                   }),
 
-                _InsectBody(size: widget.pest.size, color: color)
+                _SimplePestShape(size: widget.pest.size, color: color)
                     .animate(
                       onPlay: (controller) => controller.repeat(reverse: true),
                     )
@@ -130,112 +133,126 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
   }
 }
 
-class _InsectBody extends StatelessWidget {
+class _SimplePestShape extends StatelessWidget {
   final double size;
   final Color color;
 
-  const _InsectBody({required this.size, required this.color});
+  const _SimplePestShape({required this.size, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: size * 1.3,
-      height: size * 1.3,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            top: size * 0.35,
-            child: Row(
-              children: [
-                _Wing(size: size, angle: -0.5),
-                SizedBox(width: size * 0.2),
-                _Wing(size: size, angle: 0.5),
-              ],
-            ),
-          ),
-
-          Positioned(
-            top: size * 0.15,
-            child: Row(
-              children: [
-                Transform.rotate(
-                  angle: -0.4,
-                  child: _Antenna(color: color, height: size * 0.25),
-                ),
-                SizedBox(width: size * 0.3),
-                Transform.rotate(
-                  angle: 0.4,
-                  child: _Antenna(color: color, height: size * 0.25),
-                ),
-              ],
-            ),
-          ),
-
-          Container(
-            width: size * 0.75,
-            height: size * 0.9,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(size * 0.4),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [color.withValues(alpha: 0.9), color],
-              ),
-            ),
-          ),
-        ],
-      ),
+      width: size * 1.45,
+      height: size,
+      child: CustomPaint(painter: _BlobCapsulePestPainter(color: color)),
     );
   }
 }
 
-class _Wing extends StatelessWidget {
-  final double size;
-  final double angle;
-
-  const _Wing({required this.size, required this.angle});
-
-  @override
-  Widget build(BuildContext context) {
-    return Transform.rotate(
-      angle: angle,
-      child: Container(
-        width: size * 0.45,
-        height: size * 0.3,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(size * 0.15),
-        ),
-      ),
-    );
-  }
-}
-
-class _Antenna extends StatelessWidget {
+class _BlobCapsulePestPainter extends CustomPainter {
   final Color color;
-  final double height;
 
-  const _Antenna({required this.color, required this.height});
+  const _BlobCapsulePestPainter({required this.color});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 4,
-      height: height,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(2),
+  void paint(Canvas canvas, Size size) {
+    final wingPaint = Paint()
+      ..isAntiAlias = true
+      ..style = PaintingStyle.fill
+      ..color = const Color(0xFFEFF7F2);
+    final bodyPaint = Paint()
+      ..isAntiAlias = true
+      ..style = PaintingStyle.fill
+      ..color = color;
+    final detailPaint = Paint()
+      ..isAntiAlias = true
+      ..style = PaintingStyle.fill
+      ..color = Color.lerp(color, Colors.black, 0.16)!;
+
+    _drawCapsule(
+      canvas,
+      Rect.fromLTWH(
+        size.width * 0.12,
+        size.height * 0.27,
+        size.width * 0.32,
+        size.height * 0.43,
       ),
+      size.width * 0.09,
+      -0.18,
+      wingPaint,
     );
+    _drawCapsule(
+      canvas,
+      Rect.fromLTWH(
+        size.width * 0.56,
+        size.height * 0.27,
+        size.width * 0.32,
+        size.height * 0.43,
+      ),
+      size.width * 0.09,
+      0.18,
+      wingPaint,
+    );
+
+    _drawCapsule(
+      canvas,
+      Rect.fromLTWH(
+        size.width * 0.34,
+        size.height * 0.08,
+        size.width * 0.32,
+        size.height * 0.84,
+      ),
+      size.width * 0.16,
+      0,
+      bodyPaint,
+    );
+    _drawCapsule(
+      canvas,
+      Rect.fromLTWH(
+        size.width * 0.39,
+        size.height * 0.15,
+        size.width * 0.22,
+        size.height * 0.22,
+      ),
+      size.width * 0.08,
+      0,
+      bodyPaint,
+    );
+    _drawCapsule(
+      canvas,
+      Rect.fromLTWH(
+        size.width * 0.40,
+        size.height * 0.68,
+        size.width * 0.20,
+        size.height * 0.08,
+      ),
+      size.width * 0.04,
+      0,
+      detailPaint,
+    );
+  }
+
+  void _drawCapsule(
+    Canvas canvas,
+    Rect rect,
+    double radius,
+    double rotation,
+    Paint paint,
+  ) {
+    canvas.save();
+    canvas.translate(rect.center.dx, rect.center.dy);
+    canvas.rotate(rotation);
+    canvas.translate(-rect.center.dx, -rect.center.dy);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(radius)),
+      paint,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _BlobCapsulePestPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }
 

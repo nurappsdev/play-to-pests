@@ -73,7 +73,6 @@
 //   }
 // }
 
-
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -95,7 +94,7 @@ class FeedbackService {
     if (_isInitialized) return;
 
     try {
-      _hasVibrator = await Vibration.hasVibrator() ?? false;
+      _hasVibrator = await Vibration.hasVibrator();
 
       // SoLoud initialize করো
       await _soloud.init();

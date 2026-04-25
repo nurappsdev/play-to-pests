@@ -77,16 +77,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _startSpawning() {
     if (!_isGameRunning) return;
 
-    int elapsed = 30 - _gameTimeRemaining;
-    int spawnCount;
-
-    if (elapsed <= 8) {
-      spawnCount = 2 + _random.nextInt(2); // 2-3 pests
-    } else if (elapsed <= 18) {
-      spawnCount = 4 + _random.nextInt(2); // 4-5 pests
-    } else {
-      spawnCount = 5 + _random.nextInt(3); // 5-7 pests
-    }
+    final spawnCount = _spawnCountForElapsed(_elapsedSeconds);
 
     for (int i = 0; i < spawnCount; i++) {
       // Small delay between spawns within the same second for better feel
@@ -98,6 +89,32 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _spawnTimer = Timer(const Duration(seconds: 1), _startSpawning);
   }
 
+  int get _elapsedSeconds => 30 - _gameTimeRemaining;
+
+  int _spawnCountForElapsed(int elapsed) {
+    if (elapsed < 8) {
+      return 2 + _random.nextInt(2);
+    }
+    if (elapsed < 18) {
+      return 4 + _random.nextInt(2);
+    }
+    return 5 + _random.nextInt(3);
+  }
+
+  int _deSpawnDurationForElapsed(int elapsed) {
+    if (elapsed < 8) {
+      return 2000;
+    }
+    if (elapsed < 18) {
+      return 1500;
+    }
+    return 1000;
+  }
+
+  double _driftSpeedMultiplierForElapsed(int elapsed) {
+    return elapsed >= 18 ? 1.8 : 1.0;
+  }
+
   void spawnPest() {
     final id = _pestIdCounter++;
     final alignment = Alignment(
@@ -105,10 +122,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _random.nextDouble() * 1.6 - 0.8,
     );
 
-    final colors = [Colors.yellow, Colors.orange, Colors.red, Colors.green];
+    const colors = [
+      Color(0xFFF4D13D),
+      Color(0xFFF28C28),
+      Color(0xFFE84B3C),
+      Color(0xFF4CAF50),
+    ];
     final color = colors[_random.nextInt(colors.length)];
 
-    int elapsed = 30 - _gameTimeRemaining;
+    final elapsed = _elapsedSeconds;
 
     setState(() {
       _activePests.add(
@@ -120,20 +142,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             _random.nextDouble() * 3 - 1.5,
           ),
           color: color,
-          size: 185.0,
+          size: 96.0,
+          driftSpeedMultiplier: _driftSpeedMultiplierForElapsed(elapsed),
         ),
       );
     });
 
-    // De-spawn duration (time on screen)
-    int deSpawnDuration;
-    if (elapsed <= 8) {
-      deSpawnDuration = 2000;
-    } else if (elapsed <= 18) {
-      deSpawnDuration = 1500;
-    } else {
-      deSpawnDuration = 1000; // Faster de-spawn in late game
-    }
+    final deSpawnDuration = _deSpawnDurationForElapsed(elapsed);
 
     Timer(Duration(milliseconds: deSpawnDuration), () {
       if (_isGameRunning) {

@@ -6,6 +6,7 @@ class PestModel {
   final Offset startOffset;
   final double size;
   final Color color;
+  final double driftSpeedMultiplier;
   bool isHit;
 
   PestModel({
@@ -13,7 +14,8 @@ class PestModel {
     required this.alignment,
     required this.startOffset,
     required this.color,
-    this.size = 185.0,
+    this.size = 96.0,
+    this.driftSpeedMultiplier = 1.0,
     this.isHit = false,
   });
 }
