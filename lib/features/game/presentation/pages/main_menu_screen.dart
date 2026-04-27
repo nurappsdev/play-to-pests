@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 
 class MainMenuScreen extends StatelessWidget {
   final VoidCallback onPlayPressed;
+  final VoidCallback onPest3dPressed;
 
-  const MainMenuScreen({super.key, required this.onPlayPressed});
+  const MainMenuScreen({
+    super.key,
+    required this.onPlayPressed,
+    required this.onPest3dPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -35,13 +40,38 @@ class MainMenuScreen extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 25),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 80,
+                    vertical: 25,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   elevation: 10,
                 ),
                 child: const Text(
                   'START',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 18),
+              OutlinedButton.icon(
+                onPressed: onPest3dPressed,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.black,
+                  side: BorderSide(color: Colors.black.withValues(alpha: 0.42)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 36,
+                    vertical: 18,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: const Icon(Icons.view_in_ar),
+                label: const Text(
+                  '3D PEST',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                 ),
               ),
             ],
@@ -51,4 +81,3 @@ class MainMenuScreen extends StatelessWidget {
     );
   }
 }
-
