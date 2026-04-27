@@ -599,12 +599,13 @@ class _BlobPest3dPainter extends CustomPainter {
     final bodyCenter = center.translate(0, bob);
 
     _drawShadow(canvas, bodyCenter, unit, pulse);
-    _drawFluffyWing(canvas, bodyCenter.translate(-unit * 0.27, unit * 0.01), unit, rotation, isLeft: true);
-    _drawFluffyWing(canvas, bodyCenter.translate(unit * 0.27, unit * 0.01), unit, rotation, isLeft: false);
+    _drawFluffyWing(canvas, bodyCenter, unit, rotation, isLeft: true);  // ← before body
+    _drawFluffyWing(canvas, bodyCenter, unit, rotation, isLeft: false);
+    _drawLegs(canvas, bodyCenter, unit, rotation);
     _drawBody(canvas, bodyCenter, unit, rotation, pulse);
     _drawFace(canvas, bodyCenter, unit, rotation, pulse);
     _drawAntennae(canvas, bodyCenter, unit, rotation);
-    _drawMotionLines(canvas, bodyCenter, unit, rotation);
+    // _drawMotionLines(canvas, bodyCenter, unit, rotation);
   }
 
   void _drawShadow(Canvas canvas, Offset center, double unit, double pulse) {
@@ -629,109 +630,106 @@ class _BlobPest3dPainter extends CustomPainter {
         required bool isLeft,
       }) {
     final dir = isLeft ? -1.0 : 1.0;
-    final fluff = sin(rotation * 2.2) * unit * 0.008;
+    final fluff = sin(rotation * 2.2) * unit * 0.004;
 
-    // Drop shadow behind wing
-    final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.16)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: center.translate(dir * unit * 0.015, unit * 0.018),
-        width: unit * 0.32,
-        height: unit * 0.30,
-      ),
-      shadowPaint,
+    // Positioned upper-side, partially hidden behind body
+    final wingCenter = center.translate(dir * unit * 0.18, -unit * 0.004);
+
+    final rect = Rect.fromCenter(
+      center: wingCenter,
+      width: unit * 0.14 + fluff,
+      height: unit * 0.18, // taller than wide — egg/teardrop shape
     );
 
-    // Helper to draw one puff circle
-    void puff(Offset offset, double w, double h, {double alpha = 1.0}) {
-      final rect = Rect.fromCenter(center: center.translate(offset.dx, offset.dy), width: w, height: h);
-      final paint = Paint()
-        ..shader = RadialGradient(
-          center: Alignment(dir * -0.30, -0.40),
-          radius: 0.80,
-          colors: [
-            Colors.white.withValues(alpha: alpha),
-            const Color(0xFFEEEEEE).withValues(alpha: alpha),
-            const Color(0xFFD8D8D8).withValues(alpha: alpha),
-          ],
-          stops: const [0.0, 0.55, 1.0],
-        ).createShader(rect);
-      canvas.drawOval(rect, paint);
-    }
-
-    // Main central puff
-    puff(Offset(0, 0), unit * 0.26 + fluff, unit * 0.24);
-    // Top puff
-    puff(Offset(dir * unit * 0.02, -unit * 0.10), unit * 0.19, unit * 0.17);
-    // Bottom puff
-    puff(Offset(dir * unit * 0.03, unit * 0.10), unit * 0.21, unit * 0.17);
-    // Outer puff
-    puff(Offset(dir * unit * 0.10, 0), unit * 0.16, unit * 0.20);
-    // Top-outer puff
-    puff(Offset(dir * unit * 0.08, -unit * 0.09), unit * 0.13, unit * 0.12, alpha: 0.90);
-
-    // Specular hotspot
-    final gloss = Paint()
-      ..color = Colors.white.withValues(alpha: 0.55)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    // Soft shadow
     canvas.drawOval(
       Rect.fromCenter(
-        center: center.translate(dir * -unit * 0.06, -unit * 0.07),
-        width: unit * 0.09,
-        height: unit * 0.06,
+        center: wingCenter.translate(unit * 0.008, unit * 0.010),
+        width: unit * 0.13,
+        height: unit * 0.17,
       ),
-      gloss,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.14)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+    );
+
+    // Main egg puff
+    final paint = Paint()
+      ..shader = RadialGradient(
+        center: Alignment(dir * -0.40, -0.50),
+        radius: 0.70,
+        colors: [
+          Colors.white,
+          const Color(0xFFF0F0F0),
+          const Color(0xFFD8D8D8),
+        ],
+        stops: const [0.0, 0.45, 1.0],
+      ).createShader(rect);
+    canvas.drawOval(rect, paint);
+
+    // Specular glint — upper inner corner
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: wingCenter.translate(dir * -unit * 0.028, -unit * 0.042),
+        width: unit * 0.042,
+        height: unit * 0.028,
+      ),
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.70)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
     );
   }
-  //
-  // void _drawBody(
-  //     Canvas canvas,
-  //     Offset center,
-  //     double unit,
-  //     double rotation,
-  //     double pulse,
-  //     ) {
-  //   final rx = unit * 0.27 * pulse;
-  //   final ry = unit * 0.26 * (1 / pulse);
-  //   final bodyRect = Rect.fromCenter(center: center, width: rx * 2, height: ry * 2.05);
-  //
-  //   // Gradient fill
-  //   final bodyPaint = Paint()
-  //     ..shader = RadialGradient(
-  //       center: const Alignment(-0.35, -0.55),
-  //       radius: 0.88,
-  //       colors: const [Color(0xFFFF9A6D), _orangeRed, _red, _deepRed],
-  //       stops: const [0.0, 0.22, 0.60, 1.0],
-  //     ).createShader(bodyRect);
-  //   canvas.drawOval(bodyRect, bodyPaint);
-  //
-  //   // Bottom shade
-  //   final shade = Paint()
-  //     ..shader = LinearGradient(
-  //       begin: Alignment.topCenter,
-  //       end: Alignment.bottomCenter,
-  //       colors: [Colors.transparent, Colors.black.withValues(alpha: 0.28)],
-  //     ).createShader(bodyRect);
-  //   canvas.save();
-  //   canvas.clipRect(bodyRect);
-  //   canvas.drawOval(bodyRect, shade);
-  //   canvas.restore();
-  //
-  //   // Specular highlight
-  //   final shine = Paint()
-  //     ..color = Colors.white.withValues(alpha: 0.30)
-  //     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-  //   canvas.drawOval(
-  //     Rect.fromCenter(
-  //       center: center.translate(-rx * 0.30, -ry * 0.32),
-  //       width: rx * 0.50,
-  //       height: ry * 0.28,
-  //     ),
-  //     shine,
-  //   );
-  // }
+
+  void _drawLegs(
+      Canvas canvas,
+      Offset center,
+      double unit,
+      double rotation,
+      ) {
+    final paint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = unit * 0.0154; // 0.022 * 0.7
+
+    final legDefs = [
+      // top legs
+      (attachY: unit * 0.000, ctrlX: unit * 0.182, ctrlY: unit * 0.028, tipX: unit * 0.252, tipY: unit * 0.098),
+      // middle legs
+      (attachY: unit * 0.070, ctrlX: unit * 0.154, ctrlY: unit * 0.056, tipX: unit * 0.238, tipY: unit * 0.140),
+      // bottom legs
+      (attachY: unit * 0.112, ctrlX: unit * 0.140, ctrlY: unit * 0.140, tipX: unit * 0.196, tipY: unit * 0.210),
+    ];
+
+    for (int i = 0; i < legDefs.length; i++) {
+      final leg = legDefs[i];
+      final phase = i * 0.9;
+      final kick = sin(rotation * 2.2 + phase) * unit * 0.0126; // 0.018 * 0.7
+
+      // Right legs
+      final rightPath = Path()
+        ..moveTo(center.dx + unit * 0.119, center.dy + leg.attachY) // 0.17 * 0.7
+        ..quadraticBezierTo(
+          center.dx + leg.ctrlX,
+          center.dy + leg.ctrlY + kick,
+          center.dx + leg.tipX,
+          center.dy + leg.tipY + kick,
+        );
+      canvas.drawPath(rightPath, paint);
+
+      // Left legs (mirror X)
+      final leftPath = Path()
+        ..moveTo(center.dx - unit * 0.119, center.dy + leg.attachY) // 0.17 * 0.7
+        ..quadraticBezierTo(
+          center.dx - leg.ctrlX,
+          center.dy + leg.ctrlY - kick,
+          center.dx - leg.tipX,
+          center.dy + leg.tipY - kick,
+        );
+      canvas.drawPath(leftPath, paint);
+    }
+  }
   void _drawBody(
       Canvas canvas,
       Offset center,
@@ -739,15 +737,19 @@ class _BlobPest3dPainter extends CustomPainter {
       double rotation,
       double pulse,
       ) {
-    final rx = unit * 0.27 * pulse;
-    final ry = unit * 0.18 * (1 / pulse); // narrower height for capsule look
+    final rx = unit * 0.18 * pulse;        // narrower width
+    final ry = unit * 0.30 * (1 / pulse); // taller height
     final capsuleRect = Rect.fromCenter(center: center, width: rx * 2, height: ry * 2);
 
-    // Capsule path — fully rounded on left & right ends, flat top/bottom sides
     final capsulePath = Path()
       ..addRRect(
-        RRect.fromRectAndRadius(capsuleRect, Radius.circular(ry)), // radius = half-height = perfect semicircle
+        RRect.fromRectAndRadius(capsuleRect, Radius.circular(rx)), // radius = half-width = perfect semicircle on top/bottom
       );
+
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    // canvas.rotate(rotation * 0.12); // gentle tilt sway with animation
+    canvas.translate(-center.dx, -center.dy);
 
     // Gradient fill
     final bodyPaint = Paint()
@@ -767,22 +769,24 @@ class _BlobPest3dPainter extends CustomPainter {
         colors: [Colors.transparent, Colors.black.withValues(alpha: 0.28)],
       ).createShader(capsuleRect);
     canvas.save();
-    canvas.clipPath(capsulePath); // clip to capsule, not rect
+    canvas.clipPath(capsulePath);
     canvas.drawRect(capsuleRect, shade);
     canvas.restore();
 
-    // Specular highlight — elongated along the flat top edge
+    // Specular highlight — tall & narrow to follow the vertical capsule
     final shine = Paint()
       ..color = Colors.white.withValues(alpha: 0.32)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
     canvas.drawOval(
       Rect.fromCenter(
-        center: center.translate(-rx * 0.10, -ry * 0.45),
-        width: rx * 0.70, // wider to follow the flat top
-        height: ry * 0.26,
+        center: center.translate(-rx * 0.30, -ry * 0.30),
+        width: rx * 0.40,  // narrow
+        height: ry * 0.45, // tall
       ),
       shine,
     );
+
+    canvas.restore(); // restore rotation
   }
   void _drawFace(
       Canvas canvas,
@@ -792,24 +796,24 @@ class _BlobPest3dPainter extends CustomPainter {
       double pulse,
       ) {
     final tilt = sin(rotation) * unit * 0.010;
-    _drawEye(canvas, center.translate(-unit * 0.080, -unit * 0.020 + tilt), unit, true, rotation);
-    _drawEye(canvas, center.translate(unit * 0.080, -unit * 0.022 - tilt), unit, false, rotation);
+    _drawEye(canvas, center.translate(-unit * 0.080, -unit * 0.020 + tilt), unit, true);
+    _drawEye(canvas, center.translate(unit * 0.080, -unit * 0.022 - tilt), unit, false);
 
     // Mouth
-    final mouthPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.68)
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = unit * 0.011;
-    final mouth = Path()
-      ..moveTo(center.dx - unit * 0.036, center.dy + unit * 0.058 * pulse)
-      ..quadraticBezierTo(
-        center.dx,
-        center.dy + unit * 0.034,
-        center.dx + unit * 0.038,
-        center.dy + unit * 0.058 / pulse,
-      );
-    canvas.drawPath(mouth, mouthPaint);
+    // final mouthPaint = Paint()
+    //   ..color = Colors.black.withValues(alpha: 0.68)
+    //   ..style = PaintingStyle.stroke
+    //   ..strokeCap = StrokeCap.round
+    //   ..strokeWidth = unit * 0.011;
+    // final mouth = Path()
+    //   ..moveTo(center.dx - unit * 0.036, center.dy + unit * 0.058 * pulse)
+    //   ..quadraticBezierTo(
+    //     center.dx,
+    //     center.dy + unit * 0.034,
+    //     center.dx + unit * 0.038,
+    //     center.dy + unit * 0.058 / pulse,
+    //   );
+    // canvas.drawPath(mouth, mouthPaint);
   }
 
   void _drawEye(
@@ -817,30 +821,42 @@ class _BlobPest3dPainter extends CustomPainter {
       Offset center,
       double unit,
       bool isLeft,
-      double rotation,
       ) {
-    final blink = (sin(rotation * 0.9 + (isLeft ? 0.0 : 0.5)) + 1) / 2;
-    final eyeW = unit * 0.046;
-    final eyeH = unit * 0.044 * (0.15 + 0.85 * blink);
+    final eyeW = unit * 0.054;
+    final eyeH = unit * 0.028;
+    final tiltAngle = isLeft ? -(100 * pi / 180) : (100 * pi / 180);
 
-    // Sclera
-    canvas.drawOval(
-      Rect.fromCenter(center: center, width: eyeW * 1.15, height: eyeH * 1.15),
-      Paint()..color = Colors.white,
+    final eyeRect = Rect.fromCenter(center: center, width: eyeW * 2, height: eyeH * 2);
+    final scleraRect = Rect.fromCenter(center: center, width: eyeW * 2.15, height: eyeH * 2.15);
+
+    Path makeCapsule(Rect rect) => Path()
+      ..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(rect.height / 2)));
+
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(tiltAngle);
+    canvas.translate(-center.dx, -center.dy);
+
+    // Sclera capsule
+    canvas.drawPath(
+      makeCapsule(scleraRect),
+      Paint()..color = Colors.transparent,
     );
-    // Iris / pupil
-    canvas.drawOval(
-      Rect.fromCenter(center: center, width: eyeW, height: eyeH),
+
+    // Iris / pupil capsule
+    canvas.drawPath(
+      makeCapsule(eyeRect),
       Paint()..color = const Color(0xFF0D0D0F),
     );
+
     // Glint
-    if (blink > 0.25) {
-      canvas.drawCircle(
-        center.translate(-eyeW * 0.18, -eyeH * 0.26),
-        unit * 0.007,
-        Paint()..color = Colors.white.withValues(alpha: 0.75),
-      );
-    }
+    canvas.drawCircle(
+      center.translate(-eyeH * 0.04, -eyeH * 0.04),
+      unit * 0.008,
+      Paint()..color = Colors.white.withValues(alpha: 0.75),
+    );
+
+    canvas.restore();
   }
 
   void _drawAntennae(Canvas canvas, Offset center, double unit, double rotation) {
