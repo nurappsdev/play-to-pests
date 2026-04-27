@@ -171,7 +171,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
 
     // The widget will handle its own disappearance after animation
-    Future.delayed(const Duration(milliseconds: 200), () {
+    Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
         setState(() {
           _activePests.removeWhere((p) => p.id == id);
