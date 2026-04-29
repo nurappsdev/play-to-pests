@@ -2,7 +2,7 @@ import 'dart:math';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:taptopests/features/game/presentation/pages/pest_3d_screen.dart';
+import 'pest_3d_screen.dart';
 
 /// Paints a smooth transition from [_SplatPest3dPainter] to [SpheresCustomPainter].
 ///

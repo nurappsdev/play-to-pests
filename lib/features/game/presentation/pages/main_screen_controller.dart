@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'game_screen.dart';
-import 'main_menu_screen.dart';
 import 'pest_3d_screen.dart';
+import 'start_screen.dart';
 
-enum AppState { menu, game, pest3d }
+enum AppState { start, game, pest3d }
 
 class MainScreenController extends StatefulWidget {
   const MainScreenController({super.key});
@@ -13,7 +13,7 @@ class MainScreenController extends StatefulWidget {
 }
 
 class _MainScreenControllerState extends State<MainScreenController> {
-  AppState _currentState = AppState.menu;
+  AppState _currentState = AppState.start;
 
   void _startGame() {
     setState(() {
@@ -27,24 +27,21 @@ class _MainScreenControllerState extends State<MainScreenController> {
     });
   }
 
-  void _showMenu() {
+  void _showStart() {                      // ✅ build() এর বাইরে
     setState(() {
-      _currentState = AppState.menu;
+      _currentState = AppState.start;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     switch (_currentState) {
-      case AppState.menu:
-        return MainMenuScreen(
-          onPlayPressed: _startGame,
-          onPest3dPressed: _showPest3d,
-        );
+      case AppState.start:
+        return StartScreen(onStartPressed: _startGame);
       case AppState.game:
-        return GameScreen(onQuitPressed: _showMenu);
+        return GameScreen(onQuitPressed: _showStart);
       case AppState.pest3d:
-        return Pest3dScreen(onBackPressed: _showMenu);
-    }
-  }
-}
+        return Pest3dScreen(onBackPressed: _showStart);
+    }                                      // ✅ switch বন্ধ
+  }                                        // ✅ build() বন্ধ
+}                                          // ✅ class বন্ধ

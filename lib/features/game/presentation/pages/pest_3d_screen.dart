@@ -1,8 +1,8 @@
 import 'dart:math';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'dart:math';
+
+import 'splatToSpheresTransitionPainter.dart';
 
 class Pest3dScreen extends StatelessWidget {
   final VoidCallback onBackPressed;
@@ -17,7 +17,7 @@ class Pest3dScreen extends StatelessWidget {
         child: Stack(
           children: [
             const Positioned.fill(
-              child: AnimatedSpheresWidget(),
+              child: SplatToSpheresTransitionView(),
             ),
             Positioned(
               left: 16,
@@ -1626,6 +1626,69 @@ class AnimatedSphere {
   });
 }
 
+List<AnimatedSphere> _defaultAnimatedSpheres() {
+  return [
+    AnimatedSphere(
+      position: const Offset(150, 120),
+      radius: 60,
+      color: const Color(0xFFD32F2F),
+      animationDelay: 0.0,
+    ),
+    AnimatedSphere(
+      position: const Offset(80, 200),
+      radius: 25,
+      color: const Color(0xFFE53935),
+      animationDelay: 0.1,
+    ),
+    AnimatedSphere(
+      position: const Offset(100, 350),
+      radius: 30,
+      color: const Color(0xFFD32F2F),
+      animationDelay: 0.2,
+      hasConnection: true,
+      connectionTarget: const Offset(200, 300),
+    ),
+    AnimatedSphere(
+      position: const Offset(180, 500),
+      radius: 28,
+      color: const Color(0xFFC62828),
+      animationDelay: 0.3,
+    ),
+    AnimatedSphere(
+      position: const Offset(400, 180),
+      radius: 45,
+      color: const Color(0xFF6D4C41),
+      animationDelay: 0.15,
+    ),
+    AnimatedSphere(
+      position: const Offset(350, 280),
+      radius: 20,
+      color: const Color(0xFF8D6E63),
+      animationDelay: 0.25,
+    ),
+    AnimatedSphere(
+      position: const Offset(450, 320),
+      radius: 50,
+      color: const Color(0xFF212121),
+      animationDelay: 0.2,
+    ),
+    AnimatedSphere(
+      position: const Offset(380, 520),
+      radius: 30,
+      color: const Color(0xFF424242),
+      animationDelay: 0.35,
+      hasConnection: true,
+      connectionTarget: const Offset(320, 420),
+    ),
+    AnimatedSphere(
+      position: const Offset(420, 420),
+      radius: 25,
+      color: const Color(0xFFE53935),
+      animationDelay: 0.4,
+    ),
+  ];
+}
+
 // CustomPainter with ease-out animation
 class SpheresCustomPainter extends CustomPainter {
   final List<AnimatedSphere> spheres;
@@ -1753,6 +1816,74 @@ class SpheresCustomPainter extends CustomPainter {
 }
 
 // Usage Widget
+class SplatToSpheresTransitionView extends StatefulWidget {
+  const SplatToSpheresTransitionView({super.key});
+
+  @override
+  State<SplatToSpheresTransitionView> createState() =>
+      _SplatToSpheresTransitionViewState();
+}
+
+class _SplatToSpheresTransitionViewState
+    extends State<SplatToSpheresTransitionView>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final List<AnimatedSphere> _spheres;
+  late final List<Animation<double>> _sphereAnimations;
+
+  @override
+  void initState() {
+    super.initState();
+    _spheres = _defaultAnimatedSpheres();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 2600),
+      vsync: this,
+    );
+    _sphereAnimations = _spheres.map((sphere) {
+      return Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _controller,
+          curve: Interval(
+            sphere.animationDelay,
+            0.6 + (sphere.animationDelay * 0.5),
+            curve: Curves.easeOutCubic,
+          ),
+        ),
+      );
+    }).toList();
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.white,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return CustomPaint(
+            size: Size.infinite,
+            painter: SplatToSpheresTransitionPainter(
+              splatColor: const Color(0xFFD32F2F),
+              splatProgress: _controller.value,
+              spheres: _spheres,
+              animation: _controller,
+              sphereAnimations: _sphereAnimations,
+              transition: _controller.value,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class AnimatedSpheresWidget extends StatefulWidget {
   const AnimatedSpheresWidget({super.key});
 
@@ -1765,73 +1896,7 @@ class _AnimatedSpheresWidgetState extends State<AnimatedSpheresWidget>
   late AnimationController _controller;
   late List<Animation<double>> _sphereAnimations;
 
-  final List<AnimatedSphere> _spheres = [
-    // Red spheres
-    AnimatedSphere(
-      position: Offset(150, 120),
-      radius: 60,
-      color: const Color(0xFFD32F2F),
-      animationDelay: 0.0,
-    ),
-    AnimatedSphere(
-      position: Offset(80, 200),
-      radius: 25,
-      color: const Color(0xFFE53935),
-      animationDelay: 0.1,
-    ),
-    AnimatedSphere(
-      position: Offset(100, 350),
-      radius: 30,
-      color: const Color(0xFFD32F2F),
-      animationDelay: 0.2,
-      hasConnection: true,
-      connectionTarget: Offset(200, 300),
-    ),
-    AnimatedSphere(
-      position: Offset(180, 500),
-      radius: 28,
-      color: const Color(0xFFC62828),
-      animationDelay: 0.3,
-    ),
-
-    // Brown spheres
-    AnimatedSphere(
-      position: Offset(400, 180),
-      radius: 45,
-      color: const Color(0xFF6D4C41),
-      animationDelay: 0.15,
-    ),
-    AnimatedSphere(
-      position: Offset(350, 280),
-      radius: 20,
-      color: const Color(0xFF8D6E63),
-      animationDelay: 0.25,
-    ),
-
-    // Black spheres
-    AnimatedSphere(
-      position: Offset(450, 320),
-      radius: 50,
-      color: const Color(0xFF212121),
-      animationDelay: 0.2,
-    ),
-    AnimatedSphere(
-      position: Offset(380, 520),
-      radius: 30,
-      color: const Color(0xFF424242),
-      animationDelay: 0.35,
-      hasConnection: true,
-      connectionTarget: Offset(320, 420),
-    ),
-
-    // Additional red sphere
-    AnimatedSphere(
-      position: Offset(420, 420),
-      radius: 25,
-      color: const Color(0xFFE53935),
-      animationDelay: 0.4,
-    ),
-  ];
+  final List<AnimatedSphere> _spheres = _defaultAnimatedSpheres();
 
   @override
   void initState() {

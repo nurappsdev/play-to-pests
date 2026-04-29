@@ -272,13 +272,18 @@ class _BlobPest3dPainter extends CustomPainter {
     final bob = sin(rotation * 1.8) * unit * 0.025;
     final pulse = 1 + sin(rotation * 2.4) * 0.035;
     final bodyCenter = center.translate(0, bob);
-    final palette = _SplatPalette.from(color);
+    
+    // Create palette from base color
+    final hsl = HSLColor.fromColor(color);
+    final highlight = hsl.withLightness((hsl.lightness + 0.3).clamp(0.0, 1.0)).toColor();
+    final bright = hsl.withLightness((hsl.lightness + 0.15).clamp(0.0, 1.0)).toColor();
+    final deep = hsl.withLightness((hsl.lightness - 0.2).clamp(0.0, 1.0)).toColor();
 
     _drawShadow(canvas, bodyCenter, unit, pulse);
     _drawWing(canvas, bodyCenter, unit, rotation, isLeft: true);
     _drawWing(canvas, bodyCenter, unit, rotation, isLeft: false);
     _drawLegs(canvas, bodyCenter, unit, rotation);
-    _drawBody(canvas, bodyCenter, unit, pulse, palette);
+    _drawBody(canvas, bodyCenter, unit, pulse, highlight, bright, deep);
     _drawFace(canvas, bodyCenter, unit, rotation);
     _drawAntennae(canvas, bodyCenter, unit, rotation);
   }
@@ -408,7 +413,9 @@ class _BlobPest3dPainter extends CustomPainter {
     Offset center,
     double unit,
     double pulse,
-    _SplatPalette palette,
+    Color highlight,
+    Color bright,
+    Color deep,
   ) {
     final rx = unit * 0.18 * pulse;
     final ry = unit * 0.30 * (1 / pulse);
@@ -427,10 +434,10 @@ class _BlobPest3dPainter extends CustomPainter {
           center: const Alignment(-0.35, -0.55),
           radius: 0.88,
           colors: [
-            palette.highlight,
-            palette.bright,
-            palette.base,
-            palette.deep,
+            highlight,
+            bright,
+            color,
+            deep,
           ],
           stops: const [0.0, 0.22, 0.60, 1.0],
         ).createShader(capsuleRect),
