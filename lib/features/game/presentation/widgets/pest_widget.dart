@@ -30,6 +30,7 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
   late final AnimationController _hitController;
   Offset _driftOffset = Offset.zero;
   Offset _velocity = Offset.zero;
+  Duration _nextDirectionChangeAt = Duration.zero;
   double _idleProgress = 0;
   final Random _random = Random();
 
@@ -38,9 +39,10 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
     super.initState();
     final driftSpeedMultiplier = widget.pest.driftSpeedMultiplier;
     _velocity = Offset(
-      (_random.nextDouble() - 0.5) * 0.003 * driftSpeedMultiplier,
-      (_random.nextDouble() - 0.5) * 0.003 * driftSpeedMultiplier,
+      (_random.nextDouble() - 0.5) * 0.0036 * driftSpeedMultiplier,
+      (_random.nextDouble() - 0.5) * 0.0036 * driftSpeedMultiplier,
     );
+    _scheduleNextDirectionChange(Duration.zero);
     _ticker = createTicker(_onTick)..start();
     _hitController = AnimationController(
       vsync: this,
@@ -55,24 +57,42 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  void _scheduleNextDirectionChange(Duration elapsed) {
+    _nextDirectionChangeAt =
+        elapsed + Duration(milliseconds: 600 + _random.nextInt(601));
+  }
+
+  void _changeDirection(Duration elapsed) {
+    final driftSpeedMultiplier = widget.pest.driftSpeedMultiplier;
+    _velocity += Offset(
+      (_random.nextDouble() - 0.5) * 0.0012 * driftSpeedMultiplier,
+      (_random.nextDouble() - 0.5) * 0.0012 * driftSpeedMultiplier,
+    );
+
+    final maxVelocity = 0.007 * driftSpeedMultiplier;
+    if (_velocity.distance > maxVelocity) {
+      _velocity = _velocity / _velocity.distance * maxVelocity;
+    }
+
+    _scheduleNextDirectionChange(elapsed);
+  }
+
   void _onTick(Duration elapsed) {
     if (_isTapped || !mounted) return;
 
     setState(() {
       _idleProgress = (elapsed.inMilliseconds % 1400) / 1400;
-      _driftOffset += _velocity;
 
-      if (_random.nextDouble() < 0.02) {
-        final driftSpeedMultiplier = widget.pest.driftSpeedMultiplier;
-        _velocity += Offset(
-          (_random.nextDouble() - 0.5) * 0.001 * driftSpeedMultiplier,
-          (_random.nextDouble() - 0.5) * 0.001 * driftSpeedMultiplier,
-        );
-        final maxVelocity = 0.006 * driftSpeedMultiplier;
-        if (_velocity.distance > maxVelocity) {
-          _velocity = _velocity / _velocity.distance * maxVelocity;
-        }
+      if (elapsed >= _nextDirectionChangeAt) {
+        _changeDirection(elapsed);
       }
+
+      final driftSpeedMultiplier = widget.pest.driftSpeedMultiplier;
+      final jitter = Offset(
+        (_random.nextDouble() - 0.5) * 0.00018 * driftSpeedMultiplier,
+        (_random.nextDouble() - 0.5) * 0.00018 * driftSpeedMultiplier,
+      );
+      _driftOffset += _velocity + jitter;
     });
   }
 

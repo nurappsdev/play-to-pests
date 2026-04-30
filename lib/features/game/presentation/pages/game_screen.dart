@@ -159,8 +159,11 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
+  static const int _gameDurationSeconds = 30;
+  static const int _endPhaseSeconds = 8;
+
   int _score = 0;
-  int _gameTimeRemaining = 30;
+  int _gameTimeRemaining = _gameDurationSeconds;
   bool _isGameRunning = false;
   final List<PestModel> _activePests = [];
   final Random _random = Random();
@@ -251,7 +254,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _overlayController.reset();
     setState(() {
       _score = 0;
-      _gameTimeRemaining = 30;
+      _gameTimeRemaining = _gameDurationSeconds;
       _activePests.clear();
       _isGameRunning = true;
       _confetti = [];
@@ -288,22 +291,29 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _spawnTimer = Timer(const Duration(seconds: 1), _startSpawning);
   }
 
-  int get _elapsedSeconds => 30 - _gameTimeRemaining;
+  int get _elapsedSeconds => _gameDurationSeconds - _gameTimeRemaining;
+
+  bool _isEndPhaseElapsed(int elapsed) =>
+      elapsed >= _gameDurationSeconds - _endPhaseSeconds;
 
   int _spawnCountForElapsed(int elapsed) {
     if (elapsed < 8) return 2 + _random.nextInt(2);
     if (elapsed < 18) return 4 + _random.nextInt(2);
+    if (_isEndPhaseElapsed(elapsed)) return 6 + _random.nextInt(3);
     return 5 + _random.nextInt(3);
   }
 
   int _deSpawnDurationForElapsed(int elapsed) {
     if (elapsed < 8) return 2000;
     if (elapsed < 18) return 1500;
+    if (_isEndPhaseElapsed(elapsed)) return 850;
     return 1000;
   }
 
-  double _driftSpeedMultiplierForElapsed(int elapsed) =>
-      elapsed >= 18 ? 1.8 : 1.0;
+  double _driftSpeedMultiplierForElapsed(int elapsed) {
+    if (_isEndPhaseElapsed(elapsed)) return 2.1;
+    return elapsed >= 18 ? 1.8 : 1.0;
+  }
 
   void spawnPest() {
     final id = _pestIdCounter++;
