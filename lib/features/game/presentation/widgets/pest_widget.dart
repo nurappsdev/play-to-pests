@@ -95,14 +95,18 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
     return ((value - start) / (end - start)).clamp(0.0, 1.0);
   }
 
-  Widget _build3dBlobPest(double progress, double scale) {
+  Widget _build3dBlobPest(Color color, double progress, double scale) {
     return Transform.scale(
       scale: scale,
       child: SizedBox(
         width: widget.pest.size * 1.55,
         height: widget.pest.size * 1.55,
         child: CustomPaint(
-          painter: BlobPest3dAnimatedPainter(progress: progress, sizeScale: 1),
+          painter: BlobPest3dAnimatedPainter(
+            color: color,
+            progress: progress,
+            sizeScale: 1.15,
+          ),
         ),
       ),
     );
@@ -139,13 +143,17 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
         );
         final impactProgress = _phase(progress, 0.25, 1.0);
 
-        if (impactProgress == 0) {
-          return _build3dBlobPest(blobProgress, 1.0 + (0.14 * blobProgress));
+        if (impactProgress <= 0.25) {
+          return _build3dBlobPest(
+            color,
+            blobProgress,
+            1.0 + (0.14 * blobProgress),
+          );
         }
 
         final burst = Curves.easeOut.transform(impactProgress);
         final squashPop = Curves.easeOutBack.transform(
-          _phase(impactProgress, 0.0, 0.7),
+          _phase(impactProgress, 0.25, 0.6),
         );
         final fade = Curves.easeIn.transform(_phase(impactProgress, 0.74, 1.0));
 
@@ -156,7 +164,7 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
             Opacity(
               opacity: 1.0 - fade,
               child: Transform.scale(
-                scale: 0.76 + (0.24 * squashPop),
+                scale: 0.8 + (0.24 * squashPop),
                 child: _SquashPestShape(
                   size: widget.pest.size,
                   color: color,
@@ -171,6 +179,58 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
     );
   }
 
+  // 0.2 second
+  // Widget _buildHitFrame(Color color) {
+  //   return AnimatedBuilder(
+  //     animation: _hitController,
+  //     builder: (context, child) {
+  //       final progress = _hitController.value;
+  //
+  //       // BlobPest3dAnimatedPainter animation within ~0.05s (0.0 to 0.05)
+  //       final blobProgress = Curves.easeOutBack.transform(
+  //         _phase(progress, 0.0, 0.05),
+  //       );
+  //
+  //       // Impact Progress animation (0.05 to 1.0)
+  //       final impactProgress = _phase(progress, 0.05, 1.0);
+  //
+  //       if (impactProgress <= 0.05) {
+  //         // BlobPest3dAnimatedPainter: Show during the first 0.05s
+  //         return _build3dBlobPest(blobProgress, 1.0 + (0.14 * blobProgress));
+  //       }
+  //
+  //       // SquashPop: Animation between 0.05 and 0.15s (0.05 to 0.15)
+  //       final squashPop = Curves.easeOutBack.transform(
+  //         _phase(impactProgress, 0.05, 0.15),
+  //       );
+  //
+  //       // Particle: Animation between 0.15 and 0.20s (0.15 to 0.20)
+  //       final burst = Curves.easeOut.transform(_phase(impactProgress, 0.15, 0.20));
+  //
+  //       // Fade: Animation between 0.20 and 0.25s (0.20 to 0.25)
+  //       final fade = Curves.easeIn.transform(_phase(impactProgress, 0.20, 0.25));
+  //
+  //       return Stack(
+  //         alignment: Alignment.center,
+  //         clipBehavior: Clip.none,
+  //         children: [
+  //           Opacity(
+  //             opacity: 1.0 - fade,
+  //             child: Transform.scale(
+  //               scale: 0.8 + (0.24 * squashPop),
+  //               child: _SquashPestShape(
+  //                 size: widget.pest.size,
+  //                 color: color,
+  //                 progress: impactProgress,
+  //               ),
+  //             ),
+  //           ),
+  //           _buildParticleBurst(color, burst),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
   @override
   Widget build(BuildContext context) {
     final Color color = widget.pest.color;
@@ -238,17 +298,15 @@ class _SimplePestShape extends StatelessWidget {
 }
 
 class BlobPest3dAnimatedPainter extends CustomPainter {
+  final Color color;
   final double progress;
   final double sizeScale;
 
   const BlobPest3dAnimatedPainter({
+    required this.color,
     required this.progress,
     required this.sizeScale,
   });
-
-  static const Color _red = Color(0xFFF12A17);
-  static const Color _deepRed = Color(0xFF910E07);
-  static const Color _orangeRed = Color(0xFFFF6230);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -258,16 +316,17 @@ class BlobPest3dAnimatedPainter extends CustomPainter {
     final bob = sin(rotation * 1.8) * unit * 0.025;
     final pulse = 1 + sin(rotation * 2.4) * 0.035;
     final bodyCenter = center.translate(0, bob);
+    final palette = _SplatPalette.from(color);
 
     _drawShadow(canvas, bodyCenter, unit, pulse);
     _drawFluffyWing(canvas, bodyCenter, unit, rotation, isLeft: true);
     _drawFluffyWing(canvas, bodyCenter, unit, rotation, isLeft: false);
     _drawLegs(canvas, bodyCenter, unit, rotation);
-    _drawBody(canvas, bodyCenter, unit, rotation, pulse);
+    _drawBody(canvas, bodyCenter, unit, rotation, pulse, palette);
     _drawFace(canvas, bodyCenter, unit, rotation, pulse);
     // _drawAntennae(canvas, bodyCenter, unit, rotation);
     _drawAntennae(canvas, bodyCenter, unit, rotation);
-    _drawRedLines(canvas, center, unit, rotation);
+    _drawRedLines(canvas, center, unit, rotation, palette.base);
   }
 
   void _drawShadow(Canvas canvas, Offset center, double unit, double pulse) {
@@ -415,6 +474,7 @@ class BlobPest3dAnimatedPainter extends CustomPainter {
     double unit,
     double rotation,
     double pulse,
+    _SplatPalette palette,
   ) {
     final rx = unit * 0.18 * pulse; // narrower width
     final ry = unit * 0.30 * (1 / pulse); // taller height
@@ -442,7 +502,7 @@ class BlobPest3dAnimatedPainter extends CustomPainter {
       ..shader = RadialGradient(
         center: const Alignment(-0.35, -0.55),
         radius: 0.88,
-        colors: const [Color(0xFFFF9A6D), _orangeRed, _red, _deepRed],
+        colors: [palette.highlight, palette.bright, palette.base, palette.deep],
         stops: const [0.0, 0.22, 0.60, 1.0],
       ).createShader(capsuleRect);
     canvas.drawPath(capsulePath, bodyPaint);
@@ -502,9 +562,10 @@ class BlobPest3dAnimatedPainter extends CustomPainter {
     Offset center,
     double unit,
     double rotation,
+    Color lineColor,
   ) {
     final paint = Paint()
-      ..color = _red
+      ..color = lineColor
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeWidth = unit * 0.014;
@@ -637,7 +698,9 @@ class BlobPest3dAnimatedPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant BlobPest3dAnimatedPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.sizeScale != sizeScale;
+      oldDelegate.color != color ||
+      oldDelegate.progress != progress ||
+      oldDelegate.sizeScale != sizeScale;
 }
 
 class _SquashPestShape extends StatelessWidget {

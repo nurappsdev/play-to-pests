@@ -1,79 +1,3 @@
-// import 'dart:async';
-//
-// import 'package:audioplayers/audioplayers.dart';
-// import 'package:flutter/foundation.dart';
-// import 'package:flutter/services.dart';
-// import 'package:vibration/vibration.dart';
-//
-// class FeedbackService {
-//   static final FeedbackService _instance = FeedbackService._internal();
-//   factory FeedbackService() => _instance;
-//   FeedbackService._internal();
-//
-//   static const String _tapSoundAsset = 'audio/tap_sound.mp3';
-//
-//   bool _isInitialized = false;
-//   bool _hasVibrator = false;
-//
-//   AudioPool? _tapSoundPool;
-//
-//   Future<void> init() async {
-//     if (_isInitialized) return;
-//
-//     try {
-//       _hasVibrator = await Vibration.hasVibrator();
-//       _tapSoundPool = await AudioPool.createFromAsset(
-//         path: _tapSoundAsset,
-//         minPlayers: 4,
-//         maxPlayers: 8,
-//         playerMode: PlayerMode.lowLatency,
-//       );
-//
-//       _isInitialized = true;
-//     } catch (e) {
-//       _hasVibrator = true;
-//       if (kDebugMode) {
-//         debugPrint('FeedbackService initialization error: $e');
-//       }
-//     }
-//   }
-//
-//   void triggerTapFeedback() {
-//     unawaited(_playTapSound());
-//     _triggerHaptics();
-//   }
-//
-//   Future<void> _playTapSound() async {
-//     try {
-//       final stop = await _tapSoundPool?.start(volume: 1.0);
-//       Future.delayed(const Duration(milliseconds: 200), () {
-//         unawaited(stop?.call());
-//       });
-//     } catch (e) {
-//       if (kDebugMode) {
-//         debugPrint('Audio error: $e');
-//       }
-//     }
-//   }
-//
-//   void _triggerHaptics() {
-//     if (_hasVibrator) {
-//       Vibration.vibrate(duration: 40);
-//     } else {
-//       HapticFeedback.lightImpact();
-//     }
-//
-//     HapticFeedback.selectionClick();
-//   }
-//
-//   Future<void> dispose() async {
-//     await _tapSoundPool?.dispose();
-//     _tapSoundPool = null;
-//     _isInitialized = false;
-//   }
-// }
-
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
@@ -83,6 +7,9 @@ class FeedbackService {
   static final FeedbackService _instance = FeedbackService._internal();
   factory FeedbackService() => _instance;
   FeedbackService._internal();
+
+  static const String _tapSoundAsset = 'assets/audio/pest_pop.wav';
+  static const Duration _maxTapSoundLength = Duration(milliseconds: 120);
 
   bool _isInitialized = false;
   bool _hasVibrator = false;
@@ -95,12 +22,11 @@ class FeedbackService {
 
     try {
       _hasVibrator = await Vibration.hasVibrator();
-
-      // SoLoud initialize করো
       await _soloud.init();
-
-      // Sound memory-তে load করো
-      _tapSound = await _soloud.loadAsset('assets/audio/tap_sound.mp3');
+      _tapSound = await _soloud.loadAsset(
+        _tapSoundAsset,
+        mode: LoadMode.memory,
+      );
 
       _isInitialized = true;
     } catch (e) {
@@ -111,14 +37,15 @@ class FeedbackService {
 
   void triggerTapFeedback() {
     try {
-      if (_tapSound != null) {
+      if (_isInitialized && _tapSound != null) {
         final handle = _soloud.play(_tapSound!, volume: 0.55);
-        _soloud.setRelativePlaySpeed(handle, 1.28);
-        _soloud.scheduleStop(handle, const Duration(milliseconds: 95));
+        _soloud.setRelativePlaySpeed(handle, 1.18);
+        _soloud.scheduleStop(handle, _maxTapSoundLength);
       }
     } catch (e) {
       if (kDebugMode) debugPrint('Tap sound error: $e');
     }
+
     _triggerHaptics();
   }
 
@@ -128,14 +55,16 @@ class FeedbackService {
     } else {
       HapticFeedback.lightImpact();
     }
+
     HapticFeedback.selectionClick();
   }
 
   Future<void> dispose() async {
     if (_tapSound != null) {
-      _soloud.disposeSource(_tapSound!);
+      await _soloud.disposeSource(_tapSound!);
+      _tapSound = null;
     }
-    _soloud.deinit(); // await সরাও
+    _soloud.deinit();
     _isInitialized = false;
   }
 }
