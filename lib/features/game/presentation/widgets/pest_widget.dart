@@ -149,32 +149,408 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
         child: _isTapped
             ? _buildHitFrame(color)
             : Stack(
-                alignment: Alignment.center,
-                children: [
-                  _SimplePestShape(
-                        size: widget.pest.size,
-                        color: color,
-                        progress: _idleProgress,
-                      )
-                      .animate(
-                        onPlay: (controller) =>
-                            controller.repeat(reverse: true),
-                      )
-                      .shake(
-                        hz: 3,
-                        offset: const Offset(2, 2),
-                        duration: 200.ms,
-                      ),
-                ],
-              ).animate().scale(
-                begin: const Offset(0, 0),
-                end: const Offset(1, 1),
-                duration: 300.ms,
-                curve: Curves.easeOutBack,
-              ),
+          alignment: Alignment.center,
+          children: [
+            _SimplePestShape(
+              size: widget.pest.size,
+              color: color,
+              progress: _idleProgress,
+            )
+                .animate(
+              onPlay: (controller) =>
+                  controller.repeat(reverse: true),
+            )
+                .shake(
+              hz: 3,
+              offset: const Offset(2, 2),
+              duration: 200.ms,
+            ),
+          ],
+        ).animate().scale(
+          begin: const Offset(0, 0),
+          end: const Offset(1, 1),
+          duration: 300.ms,
+          curve: Curves.easeOutBack,
+        ),
       ),
     );
   }
+}
+
+class _SimplePestShape extends StatelessWidget {
+  final double size;
+  final Color color;
+  final double progress;
+
+  const _SimplePestShape({
+    required this.size,
+    required this.color,
+    required this.progress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size * 1.55,
+      height: size * 1.55,
+      child: CustomPaint(
+        painter: _BlobPest3dPainter(color: color, progress: progress),
+      ),
+    );
+  }
+}
+class BlobPest3dAnimatedPainter extends CustomPainter {
+  final double progress;
+  final double sizeScale;
+
+  const BlobPest3dAnimatedPainter({required this.progress, required this.sizeScale});
+
+  static const Color _red = Color(0xFFF12A17);
+  static const Color _deepRed = Color(0xFF910E07);
+  static const Color _orangeRed = Color(0xFFFF6230);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final unit = min(size.width, size.height) * sizeScale; // Apply size scaling
+    final center = Offset(size.width / 2, size.height / 2);
+    final rotation = progress * 2 * pi;
+    final bob = sin(rotation * 1.8) * unit * 0.025;
+    final pulse = 1 + sin(rotation * 2.4) * 0.035;
+    final bodyCenter = center.translate(0, bob);
+
+    _drawShadow(canvas, bodyCenter, unit, pulse);
+    _drawFluffyWing(canvas, bodyCenter, unit, rotation, isLeft: true);
+    _drawFluffyWing(canvas, bodyCenter, unit, rotation, isLeft: false);
+    _drawLegs(canvas, bodyCenter, unit, rotation);
+    _drawBody(canvas, bodyCenter, unit, rotation, pulse);
+    _drawFace(canvas, bodyCenter, unit, rotation, pulse);
+    // _drawAntennae(canvas, bodyCenter, unit, rotation);
+    _drawAntennae(canvas, bodyCenter, unit, rotation);
+    _drawRedLines(canvas, center, unit, rotation);
+  }
+
+  void _drawShadow(Canvas canvas, Offset center, double unit, double pulse) {
+    final paint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.42)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: center.translate(0, unit * 0.30),
+        width: unit * 0.62 * pulse,
+        height: unit * 0.11,
+      ),
+      paint,
+    );
+  }
+
+  void _drawFluffyWing(Canvas canvas, Offset center, double unit, double rotation, {required bool isLeft}) {
+    final dir = isLeft ? -1.0 : 1.0;
+    final fluff = sin(rotation * 2.2) * unit * 0.004;
+
+    final wingCenter = center.translate(dir * unit * 0.18, -unit * 0.004);
+    final rect = Rect.fromCenter(
+      center: wingCenter,
+      width: unit * 0.14 + fluff,
+      height: unit * 0.18,
+    );
+
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: wingCenter.translate(unit * 0.008, unit * 0.010),
+        width: unit * 0.13,
+        height: unit * 0.17,
+      ),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.14)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+    );
+
+    final paint = Paint()
+      ..shader = RadialGradient(
+        center: Alignment(dir * -0.40, -0.50),
+        radius: 0.70,
+        colors: [
+          Colors.white,
+          const Color(0xFFF0F0F0),
+          const Color(0xFFD8D8D8),
+        ],
+        stops: const [0.0, 0.45, 1.0],
+      ).createShader(rect);
+    canvas.drawOval(rect, paint);
+
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: wingCenter.translate(dir * -unit * 0.028, -unit * 0.042),
+        width: unit * 0.042,
+        height: unit * 0.028,
+      ),
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.70)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    );
+  }
+
+
+
+  // Other methods (_drawLegs, _drawBody, _drawFace, etc.) remain the same
+
+
+  void _drawLegs(
+      Canvas canvas,
+      Offset center,
+      double unit,
+      double rotation,
+      ) {
+    final paint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = unit * 0.0154; // 0.022 * 0.7
+
+    final legDefs = [
+      // top legs
+      (attachY: unit * 0.000, ctrlX: unit * 0.182, ctrlY: unit * 0.028, tipX: unit * 0.252, tipY: unit * 0.098),
+      // middle legs
+      (attachY: unit * 0.070, ctrlX: unit * 0.154, ctrlY: unit * 0.056, tipX: unit * 0.238, tipY: unit * 0.140),
+      // bottom legs
+      (attachY: unit * 0.112, ctrlX: unit * 0.140, ctrlY: unit * 0.140, tipX: unit * 0.196, tipY: unit * 0.210),
+    ];
+
+    for (int i = 0; i < legDefs.length; i++) {
+      final leg = legDefs[i];
+      final phase = i * 0.9;
+      final kick = sin(rotation * 2.2 + phase) * unit * 0.0126; // 0.018 * 0.7
+
+      // Right legs
+      final rightPath = Path()
+        ..moveTo(center.dx + unit * 0.119, center.dy + leg.attachY) // 0.17 * 0.7
+        ..quadraticBezierTo(
+          center.dx + leg.ctrlX,
+          center.dy + leg.ctrlY + kick,
+          center.dx + leg.tipX,
+          center.dy + leg.tipY + kick,
+        );
+      canvas.drawPath(rightPath, paint);
+
+      // Left legs (mirror X)
+      final leftPath = Path()
+        ..moveTo(center.dx - unit * 0.119, center.dy + leg.attachY) // 0.17 * 0.7
+        ..quadraticBezierTo(
+          center.dx - leg.ctrlX,
+          center.dy + leg.ctrlY - kick,
+          center.dx - leg.tipX,
+          center.dy + leg.tipY - kick,
+        );
+      canvas.drawPath(leftPath, paint);
+    }
+  }
+
+
+
+
+
+
+
+  void _drawBody(
+      Canvas canvas,
+      Offset center,
+      double unit,
+      double rotation,
+      double pulse,
+      ) {
+    final rx = unit * 0.18 * pulse;        // narrower width
+    final ry = unit * 0.30 * (1 / pulse); // taller height
+    final capsuleRect = Rect.fromCenter(center: center, width: rx * 2, height: ry * 2);
+
+    final capsulePath = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(capsuleRect, Radius.circular(rx)), // radius = half-width = perfect semicircle on top/bottom
+      );
+
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    // canvas.rotate(rotation * 0.12); // gentle tilt sway with animation
+    canvas.translate(-center.dx, -center.dy);
+
+    // Gradient fill
+    final bodyPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.35, -0.55),
+        radius: 0.88,
+        colors: const [Color(0xFFFF9A6D), _orangeRed, _red, _deepRed],
+        stops: const [0.0, 0.22, 0.60, 1.0],
+      ).createShader(capsuleRect);
+    canvas.drawPath(capsulePath, bodyPaint);
+
+    // Bottom shade
+    final shade = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Colors.transparent, Colors.black.withValues(alpha: 0.28)],
+      ).createShader(capsuleRect);
+    canvas.save();
+    canvas.clipPath(capsulePath);
+    canvas.drawRect(capsuleRect, shade);
+    canvas.restore();
+
+    // Specular highlight — tall & narrow to follow the vertical capsule
+    final shine = Paint()
+      ..color = Colors.white.withValues(alpha: 0.32)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: center.translate(-rx * 0.30, -ry * 0.30),
+        width: rx * 0.40,  // narrow
+        height: ry * 0.45, // tall
+      ),
+      shine,
+    );
+
+    canvas.restore(); // restore rotation
+  }
+  void _drawFace(
+      Canvas canvas,
+      Offset center,
+      double unit,
+      double rotation,
+      double pulse,
+      ) {
+    final tilt = sin(rotation) * unit * 0.010;
+    _drawEye(canvas, center.translate(-unit * 0.080, -unit * 0.020 + tilt), unit, true);
+    _drawEye(canvas, center.translate(unit * 0.080, -unit * 0.022 - tilt), unit, false);
+  }
+  void _drawRedLines(Canvas canvas, Offset center, double unit, double rotation) {
+    final paint = Paint()
+      ..color = _red
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = unit * 0.014;
+
+    final sway = sin(rotation * 3.8) * unit * 0.28;
+
+    // Antenna tip positions — must match _drawAntennae exactly
+    final tips = [
+      (center.dx - unit * 0.18+ sway, center.dy - unit * 0.19), // left tip
+      (center.dx + unit * 0.18 + sway, center.dy - unit * 0.19), // right tip
+    ];
+
+    // 3 short lines fanning outward from each tip ball
+    // angles relative to each side: pointing up-left for left, up-right for right
+    final leftAngles  = [-3, -2.2]; // radiating upper-left
+    final rightAngles = [-0.14, -0.9]; // radiating upper-right
+
+    final lineLen = unit * 0.055;
+
+    for (int s = 0; s < 2; s++) {
+      final tx = tips[s].$1;
+      final ty = tips[s].$2;
+      final angles = s == 0 ? leftAngles : rightAngles;
+      // Offset start point to just outside the tip ball radius
+      final ballR = unit * 0.026;
+
+      for (final a in angles) {
+        final sx = tx + cos(a) * ballR * 1.6;
+        final sy = ty + sin(a) * ballR * 1.6;
+        canvas.drawLine(
+          Offset(sx, sy),
+          Offset(sx + cos(a) * lineLen, sy + sin(a) * lineLen),
+          paint,
+        );
+      }
+    }
+  }
+  void _drawEye(
+      Canvas canvas,
+      Offset center,
+      double unit,
+      bool isLeft,
+      ) {
+    final eyeW = unit * 0.054;
+    final eyeH = unit * 0.028;
+    final tiltAngle = isLeft ? -(100 * pi / 180) : (100 * pi / 180);
+
+    final eyeRect = Rect.fromCenter(center: center, width: eyeW * 2, height: eyeH * 2);
+    final scleraRect = Rect.fromCenter(center: center, width: eyeW * 2.15, height: eyeH * 2.15);
+
+    Path makeCapsule(Rect rect) => Path()
+      ..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(rect.height / 2)));
+
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(tiltAngle);
+    canvas.translate(-center.dx, -center.dy);
+
+    // Sclera capsule
+    canvas.drawPath(
+      makeCapsule(scleraRect),
+      Paint()..color = Colors.transparent,
+    );
+
+    // Iris / pupil capsule
+    canvas.drawPath(
+      makeCapsule(eyeRect),
+      Paint()..color = const Color(0xFF0D0D0F),
+    );
+
+    // Glint
+    canvas.drawCircle(
+      center.translate(-eyeH * 0.04, -eyeH * 0.04),
+      unit * 0.008,
+      Paint()..color = Colors.white.withValues(alpha: 0.75),
+    );
+
+    canvas.restore();
+  }
+
+
+  void _drawAntennae(
+      Canvas canvas,
+      Offset center,
+      double unit,
+      double rotation,
+      ) {
+    final paint = Paint()
+      ..color = const Color(0xFF0D0D0F)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = unit * 0.013;
+    final sway = sin(rotation * 1.8) * unit * 0.028;
+
+    void antenna(double baseX, double tipX, double tipY) {
+      final path = Path()
+        ..moveTo(center.dx + baseX, center.dy - unit * 0.25)
+        ..quadraticBezierTo(
+          center.dx + tipX * 0.7 + sway, // control point follows tip direction (outward)
+          center.dy - unit * 0.32,
+          center.dx + tipX,
+          center.dy + tipY,
+        );
+      canvas.drawPath(path, paint);
+      final tipPos = center.translate(tipX, tipY);
+      canvas.drawCircle(
+        tipPos,
+        unit * 0.022,
+        Paint()..color = const Color(0xFF0D0D0F),
+      );
+      canvas.drawCircle(
+        tipPos,
+        unit * 0.0182,
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.38)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+      );
+    }
+
+    antenna(-unit * 0.08, -unit * 0.12, -unit * 0.34); // wide left
+    antenna( unit * 0.08,  unit * 0.12, -unit * 0.34); // wide right
+  }
+
+
+  @override
+  bool shouldRepaint(covariant BlobPest3dAnimatedPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.sizeScale != sizeScale;
 }
 
 class _SquashPestShape extends StatelessWidget {
@@ -235,28 +611,13 @@ class _Particle extends StatelessWidget {
   }
 }
 
-class _SimplePestShape extends StatelessWidget {
-  final double size;
-  final Color color;
-  final double progress;
 
-  const _SimplePestShape({
-    required this.size,
-    required this.color,
-    required this.progress,
-  });
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size * 1.55,
-      height: size * 1.55,
-      child: CustomPaint(
-        painter: _BlobPest3dPainter(color: color, progress: progress),
-      ),
-    );
-  }
-}
+
+
+
+
+
 
 class _BlobPest3dPainter extends CustomPainter {
   final Color color;
@@ -272,7 +633,7 @@ class _BlobPest3dPainter extends CustomPainter {
     final bob = sin(rotation * 1.8) * unit * 0.025;
     final pulse = 1 + sin(rotation * 2.4) * 0.035;
     final bodyCenter = center.translate(0, bob);
-    
+
     // Create palette from base color
     final hsl = HSLColor.fromColor(color);
     final highlight = hsl.withLightness((hsl.lightness + 0.3).clamp(0.0, 1.0)).toColor();
@@ -302,12 +663,12 @@ class _BlobPest3dPainter extends CustomPainter {
   }
 
   void _drawWing(
-    Canvas canvas,
-    Offset center,
-    double unit,
-    double rotation, {
-    required bool isLeft,
-  }) {
+      Canvas canvas,
+      Offset center,
+      double unit,
+      double rotation, {
+        required bool isLeft,
+      }) {
     final dir = isLeft ? -1.0 : 1.0;
     final flutter = sin(rotation * 2.2) * unit * 0.004;
     final wingCenter = center.translate(dir * unit * 0.18, -unit * 0.004);
@@ -358,25 +719,25 @@ class _BlobPest3dPainter extends CustomPainter {
       ..strokeWidth = unit * 0.0154;
     final legDefs = [
       (
-        attachY: unit * 0.000,
-        ctrlX: unit * 0.182,
-        ctrlY: unit * 0.028,
-        tipX: unit * 0.252,
-        tipY: unit * 0.098,
+      attachY: unit * 0.000,
+      ctrlX: unit * 0.182,
+      ctrlY: unit * 0.028,
+      tipX: unit * 0.252,
+      tipY: unit * 0.098,
       ),
       (
-        attachY: unit * 0.070,
-        ctrlX: unit * 0.154,
-        ctrlY: unit * 0.056,
-        tipX: unit * 0.238,
-        tipY: unit * 0.140,
+      attachY: unit * 0.070,
+      ctrlX: unit * 0.154,
+      ctrlY: unit * 0.056,
+      tipX: unit * 0.238,
+      tipY: unit * 0.140,
       ),
       (
-        attachY: unit * 0.112,
-        ctrlX: unit * 0.140,
-        ctrlY: unit * 0.140,
-        tipX: unit * 0.196,
-        tipY: unit * 0.210,
+      attachY: unit * 0.112,
+      ctrlX: unit * 0.140,
+      ctrlY: unit * 0.140,
+      tipX: unit * 0.196,
+      tipY: unit * 0.210,
       ),
     ];
 
@@ -409,14 +770,14 @@ class _BlobPest3dPainter extends CustomPainter {
   }
 
   void _drawBody(
-    Canvas canvas,
-    Offset center,
-    double unit,
-    double pulse,
-    Color highlight,
-    Color bright,
-    Color deep,
-  ) {
+      Canvas canvas,
+      Offset center,
+      double unit,
+      double pulse,
+      Color highlight,
+      Color bright,
+      Color deep,
+      ) {
     final rx = unit * 0.18 * pulse;
     final ry = unit * 0.30 * (1 / pulse);
     final capsuleRect = Rect.fromCenter(
@@ -524,9 +885,9 @@ class _BlobPest3dPainter extends CustomPainter {
 
     void antenna(double baseX, double tipX, double tipY) {
       final path = Path()
-        ..moveTo(center.dx + baseX, center.dy - unit * 0.21)
+        ..moveTo(center.dx + baseX, center.dy - unit * 0.25)
         ..quadraticBezierTo(
-          center.dx + tipX * 0.6 + sway, // control point follows tip direction (outward)
+          center.dx + tipX * 0.7 + sway, // control point follows tip direction (outward)
           center.dy - unit * 0.32,
           center.dx + tipX,
           center.dy + tipY,
@@ -540,15 +901,15 @@ class _BlobPest3dPainter extends CustomPainter {
       );
       canvas.drawCircle(
         tipPos,
-        unit * 0.022,
+        unit * 0.0182,
         Paint()
           ..color = Colors.white.withValues(alpha: 0.38)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
       );
     }
 
-    antenna(-unit * 0.08, -unit * 0.22, -unit * 0.34); // wide left
-    antenna( unit * 0.08,  unit * 0.22, -unit * 0.34); // wide right
+    antenna(-unit * 0.08, -unit * 0.12, -unit * 0.34); // wide left
+    antenna( unit * 0.08,  unit * 0.12, -unit * 0.34); // wide right
   }
 
   @override
@@ -755,14 +1116,14 @@ class _SplatPest3dPainter extends CustomPainter {
   }
 
   void _drawBody(
-    Canvas canvas,
-    Offset center,
-    double width,
-    double height,
-    double unit,
-    double rotation,
-    _SplatPalette palette,
-  ) {
+      Canvas canvas,
+      Offset center,
+      double width,
+      double height,
+      double unit,
+      double rotation,
+      _SplatPalette palette,
+      ) {
     final path = _inkSplatPath(center, width, height, unit, rotation);
     final bounds = path.getBounds();
     final bodyPaint = Paint()
@@ -800,12 +1161,12 @@ class _SplatPest3dPainter extends CustomPainter {
   }
 
   Path _inkSplatPath(
-    Offset center,
-    double width,
-    double height,
-    double unit,
-    double rotation,
-  ) {
+      Offset center,
+      double width,
+      double height,
+      double unit,
+      double rotation,
+      ) {
     final points = <Offset>[];
     const radii = <double>[
       0.74,
@@ -878,12 +1239,12 @@ class _SplatPest3dPainter extends CustomPainter {
   }
 
   void _drawFace(
-    Canvas canvas,
-    Offset center,
-    double unit,
-    double rotation,
-    double pulse,
-  ) {
+      Canvas canvas,
+      Offset center,
+      double unit,
+      double rotation,
+      double pulse,
+      ) {
     final eyePaint = Paint()
       ..color = Colors.black
       ..strokeWidth = unit * 0.028
@@ -921,12 +1282,12 @@ class _SplatPest3dPainter extends CustomPainter {
   }
 
   void _drawAngryEye(
-    Canvas canvas,
-    Offset center,
-    double unit,
-    Paint paint,
-    double angle,
-  ) {
+      Canvas canvas,
+      Offset center,
+      double unit,
+      Paint paint,
+      double angle,
+      ) {
     canvas.save();
     canvas.translate(center.dx, center.dy);
     canvas.rotate(angle);
@@ -940,9 +1301,9 @@ class _SplatPest3dPainter extends CustomPainter {
     //   • right side: the tapered point (teardrop tip)
     final bodyPath = Path()
       ..moveTo(-w, 0)
-      // top edge — gentle outward arc toward the pointed tip
+    // top edge — gentle outward arc toward the pointed tip
       ..cubicTo(-w * 0.50, -h * 1.10, w * 0.30, -h * 0.95, w, 0)
-      // bottom edge — slightly fuller belly, matching tip
+    // bottom edge — slightly fuller belly, matching tip
       ..cubicTo(w * 0.30, h * 1.05, -w * 0.50, h * 1.10, -w, 0)
       ..close();
 
@@ -1050,11 +1411,11 @@ class _SplatPest3dPainter extends CustomPainter {
   }
 
   void _drawAntennae(
-    Canvas canvas,
-    Offset center,
-    double unit,
-    double rotation,
-  ) {
+      Canvas canvas,
+      Offset center,
+      double unit,
+      double rotation,
+      ) {
     final paint = Paint()
       ..color = Colors.black
       ..style = PaintingStyle.stroke
@@ -1082,65 +1443,65 @@ class _SplatPest3dPainter extends CustomPainter {
   }
 
   void _drawMotionLines(
-    Canvas canvas,
-    Offset center,
-    double unit,
-    double rotation,
-    _SplatPalette palette,
-  ) {
+      Canvas canvas,
+      Offset center,
+      double unit,
+      double rotation,
+      _SplatPalette palette,
+      ) {
     final specs =
-        <
-          ({
-            double angle,
-            double distance,
-            double width,
-            double height,
-            double phase,
-          })
-        >[
-          (
-            angle: -2.55,
-            distance: 0.49,
-            width: 0.12,
-            height: 0.030,
-            phase: 0.0,
-          ),
-          (
-            angle: -1.58,
-            distance: 0.55,
-            width: 0.145,
-            height: 0.035,
-            phase: 0.7,
-          ),
-          (
-            angle: -0.94,
-            distance: 0.50,
-            width: 0.095,
-            height: 0.026,
-            phase: 1.3,
-          ),
-          (
-            angle: -0.45,
-            distance: 0.52,
-            width: 0.105,
-            height: 0.028,
-            phase: 2.0,
-          ),
-          (
-            angle: -0.04,
-            distance: 0.53,
-            width: 0.095,
-            height: 0.050,
-            phase: 2.7,
-          ),
-          (
-            angle: 2.92,
-            distance: 0.43,
-            width: 0.080,
-            height: 0.030,
-            phase: 3.3,
-          ),
-        ];
+    <
+        ({
+        double angle,
+        double distance,
+        double width,
+        double height,
+        double phase,
+        })
+    >[
+      (
+      angle: -2.55,
+      distance: 0.49,
+      width: 0.12,
+      height: 0.030,
+      phase: 0.0,
+      ),
+      (
+      angle: -1.58,
+      distance: 0.55,
+      width: 0.145,
+      height: 0.035,
+      phase: 0.7,
+      ),
+      (
+      angle: -0.94,
+      distance: 0.50,
+      width: 0.095,
+      height: 0.026,
+      phase: 1.3,
+      ),
+      (
+      angle: -0.45,
+      distance: 0.52,
+      width: 0.105,
+      height: 0.028,
+      phase: 2.0,
+      ),
+      (
+      angle: -0.04,
+      distance: 0.53,
+      width: 0.095,
+      height: 0.050,
+      phase: 2.7,
+      ),
+      (
+      angle: 2.92,
+      distance: 0.43,
+      width: 0.080,
+      height: 0.030,
+      phase: 3.3,
+      ),
+    ];
     final fill = Paint()..color = palette.base;
 
     for (final spec in specs) {
@@ -1161,13 +1522,13 @@ class _SplatPest3dPainter extends CustomPainter {
   }
 
   void _drawTaperedStroke(
-    Canvas canvas,
-    Offset center,
-    double width,
-    double height,
-    double angle,
-    Paint paint,
-  ) {
+      Canvas canvas,
+      Offset center,
+      double width,
+      double height,
+      double angle,
+      Paint paint,
+      ) {
     final path = Path()
       ..moveTo(center.dx - width * 0.50, center.dy)
       ..quadraticBezierTo(
@@ -1230,3 +1591,5 @@ class _SplatPalette {
     );
   }
 }
+
+
