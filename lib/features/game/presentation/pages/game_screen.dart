@@ -349,7 +349,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     if (index == -1 || _activePests[index].isHit) return;
     _activePests[index].isHit = true;
     setState(() => _score++);
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(PestWidget.hitSequenceDuration, () {
       if (mounted) {
         setState(() => _activePests.removeWhere((p) => p.id == id));
       }

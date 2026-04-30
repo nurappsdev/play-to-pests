@@ -37,7 +37,7 @@ class _MainScreenControllerState extends State<MainScreenController> {
   Widget build(BuildContext context) {
     switch (_currentState) {
       case AppState.start:
-      //  return Pest3dScreen(onBackPressed: _showStart);
+       //return Pest3dScreen(onBackPressed: _showStart);
          return StartScreen(onStartPressed: _startGame);
       case AppState.game:
         return GameScreen(onQuitPressed: _showStart);

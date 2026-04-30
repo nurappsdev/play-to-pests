@@ -110,8 +110,14 @@ class FeedbackService {
   }
 
   void triggerTapFeedback() {
-    if (_tapSound != null) {
-      _soloud.play(_tapSound!, volume: 0.3); // 0.1 - 0.5 এর মধ্যে adjust করো
+    try {
+      if (_tapSound != null) {
+        final handle = _soloud.play(_tapSound!, volume: 0.55);
+        _soloud.setRelativePlaySpeed(handle, 1.28);
+        _soloud.scheduleStop(handle, const Duration(milliseconds: 95));
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('Tap sound error: $e');
     }
     _triggerHaptics();
   }
