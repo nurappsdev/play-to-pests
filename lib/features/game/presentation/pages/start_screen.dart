@@ -16,6 +16,14 @@ class StartScreen extends StatefulWidget {
 class _StartScreenState extends State<StartScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  List<_ConfettiPiece> _confetti = const [];
+
+  static const _confettiColors = <Color>[
+    Color(0xFFF4D13D), // yellow
+    Color(0xFFF12A17), // red
+    Color(0xFF9C27B0), // purple
+    Color(0xFF87C902), // green
+  ];
 
   @override
   void initState() {
@@ -25,6 +33,19 @@ class _StartScreenState extends State<StartScreen>
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat();
+
+    final rng = Random();
+    final count = 8 + rng.nextInt(3); // 8..10
+    _confetti = List.generate(count, (_) {
+      return _ConfettiPiece(
+        x: rng.nextDouble(),
+        y: rng.nextDouble(),
+        size: 8 + rng.nextDouble() * 8,
+        color: _confettiColors[rng.nextInt(_confettiColors.length)],
+        rotation: rng.nextDouble() * 2 * pi,
+        isSquare: rng.nextBool(),
+      );
+    });
   }
 
   @override
@@ -51,6 +72,13 @@ class _StartScreenState extends State<StartScreen>
         child: SafeArea(
           child: Stack(
             children: [
+              // ── Random colored confetti scattered behind everything ──
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _ConfettiPainter(_confetti),
+                ),
+              ),
+
               // ── Decorative leaf/sparkle dots scattered around ──
               const _DecorDot(top: 70, left: 140, color: Color(0xFF8BC34A)),
               const _DecorDot(top: 110, right: 70, color: Color(0xFF8BC34A)),
@@ -218,6 +246,59 @@ class _ImageButtonState extends State<_ImageButton> {
       ),
     );
   }
+}
+
+// ─── Static confetti scattered across the start screen ───────────────────
+class _ConfettiPiece {
+  final double x; // 0..1 fraction of width
+  final double y; // 0..1 fraction of height
+  final double size;
+  final Color color;
+  final double rotation;
+  final bool isSquare;
+
+  const _ConfettiPiece({
+    required this.x,
+    required this.y,
+    required this.size,
+    required this.color,
+    required this.rotation,
+    required this.isSquare,
+  });
+}
+
+class _ConfettiPainter extends CustomPainter {
+  final List<_ConfettiPiece> pieces;
+  _ConfettiPainter(this.pieces);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final p in pieces) {
+      canvas.save();
+      canvas.translate(p.x * size.width, p.y * size.height);
+      canvas.rotate(p.rotation);
+      final paint = Paint()..color = p.color;
+      if (p.isSquare) {
+        canvas.drawRect(
+          Rect.fromCenter(center: Offset.zero, width: p.size, height: p.size),
+          paint,
+        );
+      } else {
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: p.size,
+            height: p.size * 0.5,
+          ),
+          paint,
+        );
+      }
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ConfettiPainter old) => !identical(old.pieces, pieces);
 }
 
 // ─── Tiny decorative leaf-dot used to fill empty space ────────────────────
