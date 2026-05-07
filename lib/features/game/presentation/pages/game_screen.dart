@@ -73,94 +73,80 @@ class _ConfettiPainter extends CustomPainter {
       old.t != t || !identical(old.pieces, pieces);
 }
 
-// ─── 3-D Score Painter ─────────────────────────────────────────────────────
+// ─── Glossy percentage painter ────────────────────────────────────────────
+// CSS spec the design provided:
+//   background:  linear-gradient(142.19deg, #5EC226 20.42%, #05A423 81%);
+//   box-shadow:  2.21px 2.21px 2px  0 rgba(19,170,38,0.2);   // outer halo
+//   box-shadow:  1px    1px    1px  0 rgba(231,255,215,1) inset; // inner highlight
+//   box-shadow:  0      2px    3px  0 rgba(3,110,14,1);      // dark drop
 class _Score3DPainter extends CustomPainter {
   final String text;
   final double fontSize;
   _Score3DPainter(this.text, this.fontSize);
 
+  // 142.19° in CSS → Flutter alignment vector (sin θ, −cos θ).
+  static const _gradient = LinearGradient(
+    begin: Alignment(-0.613, -0.790),
+    end: Alignment(0.613, 0.790),
+    colors: [Color(0xFF5EC226), Color(0xFF05A423)],
+    stops: [0.2042, 0.81],
+  );
+  static const _outerGlow = Color(0x3313AA26); // rgba(19,170,38,0.2)
+  static const _innerHl = Color(0xFFE7FFD7);   // rgba(231,255,215,1)
+  static const _dropShadow = Color(0xFF036E0E);// rgba(3,110,14,1)
+
+  TextPainter _layout(Paint foreground) {
+    return TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.5,
+          foreground: foreground,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    // Depth shadow layers
-    for (int i = 6; i >= 1; i--) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: text,
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.w900,
-            foreground: Paint()
-              ..color = Color.lerp(
-                  const Color(0xFF1B5E20), const Color(0xFF2E7D32), i / 6)!,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout(maxWidth: size.width);
-      tp.paint(
-        canvas,
-        Offset(
-          (size.width - tp.width) / 2 + i * 0.6,
-          (size.height - tp.height) / 2 + i * 0.8,
-        ),
-      );
-    }
-
-    // Gradient fill
-    final main = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.w900,
-          foreground: Paint()
-            ..shader = const LinearGradient(
-              colors: [
-                Color(0xFF81C784),
-                Color(0xFF4CAF50),
-                Color(0xFF388E3C),
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: size.width);
-    main.paint(
-      canvas,
-      Offset(
-        (size.width - main.width) / 2,
-        (size.height - main.height) / 2,
-      ),
+    final measure = _layout(Paint()..color = _dropShadow);
+    final basePos = Offset(
+      (size.width - measure.width) / 2,
+      (size.height - measure.height) / 2,
+    );
+    final rect = Rect.fromLTWH(
+      basePos.dx,
+      basePos.dy,
+      measure.width,
+      measure.height,
     );
 
-    // White top-highlight
-    final hl = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.w900,
-          foreground: Paint()
-            ..shader = LinearGradient(
-              colors: [
-                Colors.white.withValues(alpha: 0.55),
-                Colors.white.withValues(alpha: 0.0),
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.center,
-            ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: size.width);
-    hl.paint(
-      canvas,
-      Offset(
-        (size.width - hl.width) / 2,
-        (size.height - hl.height) / 2,
-      ),
+    // 1. Soft outer halo (light-green, blur 2, offset 2.21,2.21)
+    final glow = _layout(
+      Paint()
+        ..color = _outerGlow
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
     );
+    glow.paint(canvas, basePos + const Offset(2.21, 2.21));
+
+    // 2. Dark drop shadow (deep-green, blur 3, offset 0,2)
+    final drop = _layout(
+      Paint()
+        ..color = _dropShadow
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+    );
+    drop.paint(canvas, basePos + const Offset(0, 2));
+
+    // 3. Inset highlight (pale green peeking from the top-left rim)
+    final inner = _layout(Paint()..color = _innerHl);
+    inner.paint(canvas, basePos + const Offset(1, 1));
+
+    // 4. Main gradient fill
+    final main = _layout(Paint()..shader = _gradient.createShader(rect));
+    main.paint(canvas, basePos);
   }
 
   @override
@@ -461,7 +447,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     ),
                     child: Stack(
                       children: [
-                        // Rain-like animated confetti behind everything
+                        // Radial burst backdrop centered behind the content
+                        Center(
+                          child: Opacity(
+                            opacity: 0.4,
+                            child: Image.asset(
+                              'assets/images/radial_blur.png',
+                              width: 1000,
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.high,
+                            ),
+                          ),
+                        ),
+
+                        // Rain-like animated confetti above the burst
                         Positioned.fill(
                           child: AnimatedBuilder(
                             animation: _confettiController,
