@@ -9,30 +9,48 @@ import '../widgets/pest_widget.dart';
 
 // ─── Confetti Particle ─────────────────────────────────────────────────────
 class _ConfettiPiece {
-  final double x, y, size, rotation;
+  final double x;            // 0..1 base horizontal position
+  final double startY;       // 0..1 initial vertical offset
+  final double size;
   final Color color;
+  final double rotationStart;
+  final double rotationSpeed; // radians per loop
+  final double fallSpeed;     // fraction of height per loop
+  final double swayAmplitude; // 0..1 horizontal sway range
+  final double swayPhase;
   final bool isSquare;
 
   const _ConfettiPiece({
     required this.x,
-    required this.y,
+    required this.startY,
     required this.size,
     required this.color,
-    required this.rotation,
+    required this.rotationStart,
+    required this.rotationSpeed,
+    required this.fallSpeed,
+    required this.swayAmplitude,
+    required this.swayPhase,
     required this.isSquare,
   });
 }
 
 class _ConfettiPainter extends CustomPainter {
   final List<_ConfettiPiece> pieces;
-  _ConfettiPainter(this.pieces);
+  final double t; // 0..1 looping
+  _ConfettiPainter(this.pieces, this.t);
 
   @override
   void paint(Canvas canvas, Size size) {
     for (final p in pieces) {
+      // Loop from -0.1 (just above top) to 1.1 (just below bottom).
+      final yNorm = ((p.startY + p.fallSpeed * t) % 1.2) - 0.1;
+      final sway = sin((t + p.swayPhase) * 2 * pi) * p.swayAmplitude;
+      final xNorm = p.x + sway;
+      final rotation = p.rotationStart + p.rotationSpeed * t;
+
       canvas.save();
-      canvas.translate(p.x * size.width, p.y * size.height);
-      canvas.rotate(p.rotation);
+      canvas.translate(xNorm * size.width, yNorm * size.height);
+      canvas.rotate(rotation);
       final paint = Paint()..color = p.color;
       if (p.isSquare) {
         canvas.drawRect(
@@ -51,7 +69,8 @@ class _ConfettiPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ConfettiPainter old) => false;
+  bool shouldRepaint(_ConfettiPainter old) =>
+      old.t != t || !identical(old.pieces, pieces);
 }
 
 // ─── 3-D Score Painter ─────────────────────────────────────────────────────
@@ -172,11 +191,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   Timer? _gameCountdownTimer;
 
   // Overlay controllers
-  late final AnimationController _pulseController;
-  late final Animation<double> _pulseAnim;
   late final AnimationController _overlayController;
   late final Animation<double> _overlayFadeAnim;
   late final Animation<double> _cardScaleAnim;
+  late final AnimationController _confettiController;
   List<_ConfettiPiece> _confetti = [];
 
   static const _confettiColors = [
@@ -192,14 +210,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.85, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
     _overlayController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 450),
@@ -212,14 +222,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _overlayController, curve: Curves.elasticOut),
     );
 
+    _confettiController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    );
+
     _startGame();
   }
 
   @override
   void dispose() {
     _cleanupTimers();
-    _pulseController.dispose();
     _overlayController.dispose();
+    _confettiController.dispose();
     super.dispose();
   }
 
@@ -232,18 +247,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void _generateConfetti() {
     final rng = Random();
-    _confetti = List.generate(40, (_) {
-      double x, y;
-      do {
-        x = rng.nextDouble();
-        y = rng.nextDouble();
-      } while (x > 0.2 && x < 0.8 && y > 0.2 && y < 0.8);
+    _confetti = List.generate(20, (_) {
       return _ConfettiPiece(
-        x: x,
-        y: y,
-        size: 6 + rng.nextDouble() * 10,
+        x: rng.nextDouble(),
+        startY: rng.nextDouble(),
+        size: 6 + rng.nextDouble() * 8,
         color: _confettiColors[rng.nextInt(_confettiColors.length)],
-        rotation: rng.nextDouble() * pi,
+        rotationStart: rng.nextDouble() * 2 * pi,
+        rotationSpeed: (rng.nextDouble() * 4 - 2) * pi,
+        fallSpeed: 0.6 + rng.nextDouble() * 0.7,
+        swayAmplitude: 0.01 + rng.nextDouble() * 0.04,
+        swayPhase: rng.nextDouble(),
         isSquare: rng.nextBool(),
       );
     });
@@ -252,6 +266,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _startGame() {
     _cleanupTimers();
     _overlayController.reset();
+    _confettiController.stop();
+    _confettiController.reset();
     setState(() {
       _score = 0;
       _gameTimeRemaining = _gameDurationSeconds;
@@ -371,12 +387,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _cleanupTimers();
     _generateConfetti();
     _overlayController.forward();
+    _confettiController.repeat();
 
     if (_score > 0) {
       await MainBindings.saveScoreUseCase.execute(
         ScoreEntity(score: _score, dateTime: DateTime.now()),
       );
     }
+  }
+
+  // Stress relief scales with how many pests were squashed.
+  // Linear: score × 1.1, capped at 99%.
+  int get _stressReducedPercent {
+    final raw = (_score * 1.1).round();
+    return raw.clamp(0, 99);
   }
 
   @override
@@ -421,132 +445,100 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               ),
 
-              // ── Game Over Overlay ──
+              // ── Game Over Overlay (Result screen) ──
               if (!_isGameRunning)
                 FadeTransition(
                   opacity: _overlayFadeAnim,
                   child: Container(
-                    color: Colors.black.withValues(alpha: 0.45),
+                    decoration: const BoxDecoration(
+                      // linear-gradient(180deg, #E6F7F1 0%, #CFEEE3 137.91%)
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFFE6F7F1), Color(0xFFCFEEE3)],
+                        stops: [0.0, 1.3791],
+                      ),
+                    ),
                     child: Stack(
                       children: [
-                        // Confetti behind card
+                        // Rain-like animated confetti behind everything
                         Positioned.fill(
-                          child: CustomPaint(
-                            painter: _ConfettiPainter(_confetti),
+                          child: AnimatedBuilder(
+                            animation: _confettiController,
+                            builder: (_, __) => CustomPaint(
+                              painter: _ConfettiPainter(
+                                _confetti,
+                                _confettiController.value,
+                              ),
+                            ),
                           ),
                         ),
 
-                        // Animated card
                         Center(
                           child: ScaleTransition(
                             scale: _cardScaleAnim,
-                            child: Container(
-                              width: 300,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 36, horizontal: 24),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(32),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.18),
-                                    blurRadius: 30,
-                                    offset: const Offset(0, 10),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // TIME'S UP!
+                                const Text(
+                                  "TIME'S UP!",
+                                  style: TextStyle(
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF1A1C1E),
+                                    letterSpacing: 3,
                                   ),
-                                ],
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // TIME'S UP!
-                                  const Text(
-                                    "TIME'S UP!",
-                                    style: TextStyle(
-                                      fontSize: 30,
-                                      fontWeight: FontWeight.w900,
-                                      color: Color(0xFF1A1C1E),
-                                      letterSpacing: 1.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
+                                ),
+                                const SizedBox(height: 18),
 
-                                  // SCORE label
-                                  const Text(
-                                    'SCORE',
+                                // STRESS REDUCED label
+                                const Text(
+                                  'STRESS REDUCED',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF1A1C1E),
+                                    letterSpacing: 3,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+
+                                // Big green percentage with 3D effect
+                                CustomPaint(
+                                  size: const Size(260, 110),
+                                  painter: _Score3DPainter(
+                                    '$_stressReducedPercent%',
+                                    78,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                // RETRY button (PNG with press-to-shrink)
+                                _RetryImageButton(
+                                  asset: 'assets/images/retry_button.png',
+                                  width: 200,
+                                  onTap: _startGame,
+                                ),
+                                const SizedBox(height: 10),
+
+                                // HOME text button
+                                TextButton(
+                                  onPressed: widget.onQuitPressed,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFF1A1C1E),
+                                  ),
+                                  child: const Text(
+                                    'HOME',
                                     style: TextStyle(
                                       fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF43474E),
-                                      letterSpacing: 5,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 2,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-
-                                  // 3-D Score + Glow
-                                  SizedBox(
-                                    width: 220,
-                                    height: 110,
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        // Pulsing glow
-                                        AnimatedBuilder(
-                                          animation: _pulseAnim,
-                                          builder: (_, __) => Opacity(
-                                            opacity: _pulseAnim.value * 0.35,
-                                            child: Container(
-                                              width: 180,
-                                              height: 110,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: const Color(0xFF4CAF50)
-                                                        .withValues(alpha: 0.65),
-                                                    blurRadius: 60,
-                                                    spreadRadius: 12,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        // 3-D number
-                                        CustomPaint(
-                                          size: const Size(220, 110),
-                                          painter: _Score3DPainter('$_score', 88),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 28),
-
-                                  StartButton(
-                                    onTap: () => _startGame(),
-                                    width: 220,
-                                    height: 64,
-                                    label: 'Retry',
-                                  ),
-                                  const SizedBox(height: 14),
-
-                                  // HOME button
-                                  TextButton(
-                                    onPressed: widget.onQuitPressed,
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: const Color(0xFF74777F),
-                                    ),
-                                    child: const Text(
-                                      'HOME',
-                                      style: TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1.5,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -687,6 +679,48 @@ class _StartButtonState extends State<StartButton> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── PNG retry button with press-to-shrink animation ────────────────────
+class _RetryImageButton extends StatefulWidget {
+  final String asset;
+  final double width;
+  final VoidCallback onTap;
+
+  const _RetryImageButton({
+    required this.asset,
+    required this.width,
+    required this.onTap,
+  });
+
+  @override
+  State<_RetryImageButton> createState() => _RetryImageButtonState();
+}
+
+class _RetryImageButtonState extends State<_RetryImageButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 80),
+        child: Image.asset(
+          widget.asset,
+          width: widget.width,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
         ),
       ),
     );
