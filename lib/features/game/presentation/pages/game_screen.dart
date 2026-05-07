@@ -14,10 +14,11 @@ class _ConfettiPiece {
   final double size;
   final Color color;
   final double rotationStart;
-  final double rotationSpeed; // radians per loop
-  final double fallSpeed;     // fraction of height per loop
+  final double rotationSpeed; // radians per second
+  final double fallSpeed;     // fraction of height per second
   final double swayAmplitude; // 0..1 horizontal sway range
   final double swayPhase;
+  final double swaySpeed;     // cycles per second
   final bool isSquare;
 
   const _ConfettiPiece({
@@ -30,23 +31,27 @@ class _ConfettiPiece {
     required this.fallSpeed,
     required this.swayAmplitude,
     required this.swayPhase,
+    required this.swaySpeed,
     required this.isSquare,
   });
 }
 
 class _ConfettiPainter extends CustomPainter {
   final List<_ConfettiPiece> pieces;
-  final double t; // 0..1 looping
-  _ConfettiPainter(this.pieces, this.t);
+  final double elapsedSeconds;
+  _ConfettiPainter(this.pieces, this.elapsedSeconds);
 
   @override
   void paint(Canvas canvas, Size size) {
     for (final p in pieces) {
       // Loop from -0.1 (just above top) to 1.1 (just below bottom).
-      final yNorm = ((p.startY + p.fallSpeed * t) % 1.2) - 0.1;
-      final sway = sin((t + p.swayPhase) * 2 * pi) * p.swayAmplitude;
+      final yNorm = ((p.startY + p.fallSpeed * elapsedSeconds) % 1.2) - 0.1;
+      final sway = sin(
+            (elapsedSeconds * p.swaySpeed + p.swayPhase) * 2 * pi,
+          ) *
+          p.swayAmplitude;
       final xNorm = p.x + sway;
-      final rotation = p.rotationStart + p.rotationSpeed * t;
+      final rotation = p.rotationStart + p.rotationSpeed * elapsedSeconds;
 
       canvas.save();
       canvas.translate(xNorm * size.width, yNorm * size.height);
@@ -70,7 +75,7 @@ class _ConfettiPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ConfettiPainter old) =>
-      old.t != t || !identical(old.pieces, pieces);
+      old.elapsedSeconds != elapsedSeconds || !identical(old.pieces, pieces);
 }
 
 // ─── Glossy percentage painter ────────────────────────────────────────────
@@ -181,6 +186,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late final Animation<double> _overlayFadeAnim;
   late final Animation<double> _cardScaleAnim;
   late final AnimationController _confettiController;
+  final Stopwatch _confettiStopwatch = Stopwatch();
   List<_ConfettiPiece> _confetti = [];
 
   static const _confettiColors = [
@@ -210,7 +216,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     _confettiController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 6),
+      duration: const Duration(seconds: 1),
     );
 
     _startGame();
@@ -233,17 +239,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void _generateConfetti() {
     final rng = Random();
-    _confetti = List.generate(20, (_) {
+    _confetti = List.generate(34, (_) {
       return _ConfettiPiece(
-        x: rng.nextDouble(),
-        startY: rng.nextDouble(),
+        x: 0.04 + rng.nextDouble() * 0.92,
+        startY: rng.nextDouble() * 1.2,
         size: 6 + rng.nextDouble() * 8,
         color: _confettiColors[rng.nextInt(_confettiColors.length)],
         rotationStart: rng.nextDouble() * 2 * pi,
-        rotationSpeed: (rng.nextDouble() * 4 - 2) * pi,
-        fallSpeed: 0.6 + rng.nextDouble() * 0.7,
-        swayAmplitude: 0.01 + rng.nextDouble() * 0.04,
+        rotationSpeed: (rng.nextDouble() * 2.4 - 1.2) * pi,
+        fallSpeed: 0.18 + rng.nextDouble() * 0.22,
+        swayAmplitude: 0.012 + rng.nextDouble() * 0.035,
         swayPhase: rng.nextDouble(),
+        swaySpeed: 0.25 + rng.nextDouble() * 0.35,
         isSquare: rng.nextBool(),
       );
     });
@@ -254,6 +261,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _overlayController.reset();
     _confettiController.stop();
     _confettiController.reset();
+    _confettiStopwatch
+      ..stop()
+      ..reset();
     setState(() {
       _score = 0;
       _gameTimeRemaining = _gameDurationSeconds;
@@ -369,10 +379,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _endGame() async {
-    setState(() => _isGameRunning = false);
     _cleanupTimers();
-    _generateConfetti();
+    setState(() {
+      _isGameRunning = false;
+      _generateConfetti();
+    });
     _overlayController.forward();
+    _confettiStopwatch
+      ..reset()
+      ..start();
     _confettiController.repeat();
 
     if (_score > 0) {
@@ -450,7 +465,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         // Radial burst backdrop centered behind the content
                         Center(
                           child: Opacity(
-                            opacity: 0.4,
+                            opacity: 1,
                             child: Image.asset(
                               'assets/images/radial_blur.png',
                               width: 1000,
@@ -464,12 +479,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         Positioned.fill(
                           child: AnimatedBuilder(
                             animation: _confettiController,
-                            builder: (_, __) => CustomPaint(
-                              painter: _ConfettiPainter(
-                                _confetti,
-                                _confettiController.value,
-                              ),
-                            ),
+                            builder: (_, __) {
+                              return CustomPaint(
+                                painter: _ConfettiPainter(
+                                  _confetti,
+                                  _confettiStopwatch.elapsedMicroseconds /
+                                      Duration.microsecondsPerSecond,
+                                ),
+                              );
+                            },
                           ),
                         ),
 

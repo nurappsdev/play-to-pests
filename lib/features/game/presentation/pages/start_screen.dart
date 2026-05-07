@@ -1,4 +1,5 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 class StartScreen extends StatefulWidget {
@@ -16,36 +17,97 @@ class StartScreen extends StatefulWidget {
 class _StartScreenState extends State<StartScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  List<_ConfettiPiece> _confetti = const [];
 
-  static const _confettiColors = <Color>[
-    Color(0xFFF4D13D), // yellow
-    Color(0xFFF12A17), // red
-    Color(0xFF9C27B0), // purple
-    Color(0xFF87C902), // green
+  static const _sideConfetti = <_ConfettiPiece>[
+    _ConfettiPiece(
+      x: 0.05,
+      y: 0.05,
+      size: 9,
+      color: Color(0xFFF4D13D),
+      rotation: pi / 5,
+      isSquare: true,
+    ),
+    _ConfettiPiece(
+      x: 0.94,
+      y: 0.06,
+      size: 11,
+      color: Color(0xFFF12A17),
+      rotation: pi / 7,
+      isSquare: false,
+    ),
+    _ConfettiPiece(
+      x: 0.04,
+      y: 0.36,
+      size: 10,
+      color: Color(0xFF9C27B0),
+      rotation: pi / 3,
+      isSquare: false,
+    ),
+    _ConfettiPiece(
+      x: 0.96,
+      y: 0.39,
+      size: 8,
+      color: Color(0xFF87C902),
+      rotation: pi / 4,
+      isSquare: true,
+    ),
+    _ConfettiPiece(
+      x: 0.08,
+      y: 0.46,
+      size: 8,
+      color: Color(0xFFF12A17),
+      rotation: pi / 8,
+      isSquare: true,
+    ),
+    _ConfettiPiece(
+      x: 0.92,
+      y: 0.48,
+      size: 10,
+      color: Color(0xFFF4D13D),
+      rotation: pi / 2.8,
+      isSquare: false,
+    ),
+    _ConfettiPiece(
+      x: 0.05,
+      y: 0.78,
+      size: 11,
+      color: Color(0xFF87C902),
+      rotation: pi / 6,
+      isSquare: false,
+    ),
+    _ConfettiPiece(
+      x: 0.95,
+      y: 0.80,
+      size: 9,
+      color: Color(0xFF9C27B0),
+      rotation: pi / 2,
+      isSquare: true,
+    ),
+    _ConfettiPiece(
+      x: 0.10,
+      y: 0.90,
+      size: 8,
+      color: Color(0xFFF4D13D),
+      rotation: pi / 4,
+      isSquare: true,
+    ),
+    _ConfettiPiece(
+      x: 0.90,
+      y: 0.91,
+      size: 10,
+      color: Color(0xFFF12A17),
+      rotation: pi / 5,
+      isSquare: false,
+    ),
   ];
 
   @override
   void initState() {
     super.initState();
-    // Continuous loop – drives the pest bob/pulse animation.
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat();
-
-    final rng = Random();
-    final count = 8 + rng.nextInt(3); // 8..10
-    _confetti = List.generate(count, (_) {
-      return _ConfettiPiece(
-        x: rng.nextDouble(),
-        y: rng.nextDouble(),
-        size: 8 + rng.nextDouble() * 8,
-        color: _confettiColors[rng.nextInt(_confettiColors.length)],
-        rotation: rng.nextDouble() * 2 * pi,
-        isSquare: rng.nextBool(),
-      );
-    });
   }
 
   @override
@@ -57,112 +119,175 @@ class _StartScreenState extends State<StartScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        // ── Light mint gradient background (matches the screenshot) ──
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFE6F7F1),
-              Color(0xFFCFEEE3),
-            ],
+      body: SizedBox.expand(
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFE6F7F1),
+                Color(0xFFCFEEE3),
+              ],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // ── Random colored confetti scattered behind everything ──
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _ConfettiPainter(_confetti),
-                ),
-              ),
+          child: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final height = constraints.maxHeight;
+                final shortestSide = min(width, height);
 
-              // ── Decorative leaf/sparkle dots scattered around ──
-              const _DecorDot(top: 70, left: 140, color: Color(0xFF8BC34A)),
-              const _DecorDot(top: 110, right: 70, color: Color(0xFF8BC34A)),
-              const _DecorDot(top: 320, left: 30, color: Color(0xFF8BC34A)),
-              const _DecorDot(top: 360, right: 50, color: Color(0xFF8BC34A)),
-              const _DecorDot(bottom: 180, left: 50, color: Color(0xFF8BC34A)),
+                final bugSize = min(width * 0.34, height * 0.19)
+                    .clamp(76.0, 140.0)
+                    .toDouble();
+                final sideInset = (width * 0.025).clamp(8.0, 24.0).toDouble();
+                final topBugTop =
+                    (height * 0.12).clamp(24.0, 128.0).toDouble();
 
-              // ── Top-left YELLOW bug ──
-              Positioned(
-                top: 120,
-                left: 10,
-                child: _CornerBug(
-                  asset: 'assets/images/Yellow_bug.png',
-                  size: 140,
-                  controller: _controller,
-                ),
-              ),
+                final buttonWidth =
+                    (width * 0.54).clamp(160.0, 230.0).toDouble();
+                final buttonVisualHeight = buttonWidth * 0.42;
+                final buttonBottom =
+                    (height * 0.9).clamp(28.0, 150.0).toDouble();
 
-              // ── Top-right RED bug ──
-              Positioned(
-                top: 120,
-                right: 10,
-                child: _CornerBug(
-                  asset: 'assets/images/Red_bug.png',
-                  size: 140,
-                  controller: _controller,
-                  phaseOffset: 0.35,
-                ),
-              ),
+                final desiredLowerBugBottom = max(
+                  height * 0.28,
+                  buttonBottom + buttonVisualHeight + height * 0.04,
+                );
+                final maxLowerBugBottom = max(0.0, height - bugSize - 16.0);
+                final lowerBugBottom =
+                    min(desiredLowerBugBottom, maxLowerBugBottom).toDouble();
 
-              // ── Bottom-left PURPLE bug ──
-              Positioned(
-                bottom: 270,
-                left: 10,
-                child: _CornerBug(
-                  asset: 'assets/images/Purple_bug.png',
-                  size: 140,
-                  controller: _controller,
-                  phaseOffset: 0.6,
-                ),
-              ),
+                final titleWidth =
+                    (width * 0.74).clamp(210.0, 360.0).toDouble();
+                final titleHeight =
+                    (height * 0.22).clamp(86.0, 190.0).toDouble();
+                final maxTitleTop = height -
+                    titleHeight -
+                    buttonVisualHeight -
+                    buttonBottom -
+                    24;
+                final titleTop = min(
+                  max(height * 0.31, topBugTop + bugSize * 0.30),
+                  max(16.0, maxTitleTop),
+                ).toDouble();
 
-              // ── Bottom-right GREEN bug ──
-              Positioned(
-                bottom: 270,
-                right: 10,
-                child: _CornerBug(
-                  asset: 'assets/images/Green_bug.png',
-                  size: 140,
-                  controller: _controller,
-                  phaseOffset: 0.85,
-                ),
-              ),
+                final dotSize =
+                    (shortestSide * 0.02).clamp(6.0, 10.0).toDouble();
+                final showLowerBugs = height >= 520;
 
-              // ── Center: SMASH STRESS title image ──
-
-
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 450,
-                child:  Center(
-                  child: Image.asset(
-                    'assets/images/Text.png',
-                    width: 280,
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
-                  ),
-                ),
-              ),
-              // ── START button anchored near the bottom ──
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 155,
-                child: Center(
-                  child: _ImageButton(
-                    asset: 'assets/images/Button.png',
-                    width: 200,
-                    onTap: widget.onStartPressed,
-                  ),
-                ),
-              ),
-            ],
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _ConfettiPainter(_sideConfetti),
+                      ),
+                    ),
+                    _DecorDot(
+                      top: height * 0.07,
+                      left: width * 0.36,
+                      size: dotSize,
+                      color: const Color(0xFF8BC34A),
+                    ),
+                    _DecorDot(
+                      top: height * 0.12,
+                      right: width * 0.18,
+                      size: dotSize,
+                      color: const Color(0xFF8BC34A),
+                    ),
+                    _DecorDot(
+                      top: height * 0.38,
+                      left: width * 0.08,
+                      size: dotSize,
+                      color: const Color(0xFF8BC34A),
+                    ),
+                    _DecorDot(
+                      top: height * 0.43,
+                      right: width * 0.11,
+                      size: dotSize,
+                      color: const Color(0xFF8BC34A),
+                    ),
+                    _DecorDot(
+                      bottom: height * 0.20,
+                      left: width * 0.12,
+                      size: dotSize,
+                      color: const Color(0xFF8BC34A),
+                    ),
+                    Positioned(
+                      top: topBugTop,
+                      left: sideInset,
+                      child: _CornerBug(
+                        asset: 'assets/images/Yellow_bug.png',
+                        size: bugSize,
+                        controller: _controller,
+                      ),
+                    ),
+                    Positioned(
+                      top: topBugTop,
+                      right: sideInset,
+                      child: _CornerBug(
+                        asset: 'assets/images/Red_bug.png',
+                        size: bugSize,
+                        controller: _controller,
+                        phaseOffset: 0.35,
+                      ),
+                    ),
+                    if (showLowerBugs)
+                      Positioned(
+                        bottom: lowerBugBottom,
+                        left: sideInset,
+                        child: _CornerBug(
+                          asset: 'assets/images/Purple_bug.png',
+                          size: bugSize,
+                          controller: _controller,
+                          phaseOffset: 0.6,
+                        ),
+                      ),
+                    if (showLowerBugs)
+                      Positioned(
+                        bottom: lowerBugBottom,
+                        right: sideInset,
+                        child: _CornerBug(
+                          asset: 'assets/images/Green_bug.png',
+                          size: bugSize,
+                          controller: _controller,
+                          phaseOffset: 0.85,
+                        ),
+                      ),
+                    Positioned(
+                      top: titleTop,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: SizedBox(
+                          width: titleWidth,
+                          height: titleHeight,
+                          child: Image.asset(
+                            'assets/images/Text.png',
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.high,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: buttonBottom,
+                      child: Center(
+                        child: _ImageButton(
+                          asset: 'assets/images/Button.png',
+                          width: buttonWidth,
+                          onTap: widget.onStartPressed,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -170,7 +295,6 @@ class _StartScreenState extends State<StartScreen>
   }
 }
 
-// ─── Corner bug using a PNG asset, with a gentle bob animation ───────────
 class _CornerBug extends StatelessWidget {
   final String asset;
   final double size;
@@ -190,7 +314,8 @@ class _CornerBug extends StatelessWidget {
       animation: controller,
       builder: (_, __) {
         final t = (controller.value + phaseOffset) % 1.0;
-        final dy = sin(t * 2 * pi) * 6.0;
+        final dy =
+            (sin(t * 2 * pi) * (size * 0.045).clamp(3.0, 6.0)).toDouble();
         return Transform.translate(
           offset: Offset(0, dy),
           child: Image.asset(
@@ -206,7 +331,6 @@ class _CornerBug extends StatelessWidget {
   }
 }
 
-// ─── Tappable PNG button with press-to-shrink feedback ───────────────────
 class _ImageButton extends StatefulWidget {
   final String asset;
   final double width;
@@ -248,10 +372,9 @@ class _ImageButtonState extends State<_ImageButton> {
   }
 }
 
-// ─── Static confetti scattered across the start screen ───────────────────
 class _ConfettiPiece {
-  final double x; // 0..1 fraction of width
-  final double y; // 0..1 fraction of height
+  final double x;
+  final double y;
   final double size;
   final Color color;
   final double rotation;
@@ -269,6 +392,7 @@ class _ConfettiPiece {
 
 class _ConfettiPainter extends CustomPainter {
   final List<_ConfettiPiece> pieces;
+
   _ConfettiPainter(this.pieces);
 
   @override
@@ -301,9 +425,12 @@ class _ConfettiPainter extends CustomPainter {
   bool shouldRepaint(_ConfettiPainter old) => !identical(old.pieces, pieces);
 }
 
-// ─── Tiny decorative leaf-dot used to fill empty space ────────────────────
 class _DecorDot extends StatelessWidget {
-  final double? top, left, right, bottom;
+  final double? top;
+  final double? left;
+  final double? right;
+  final double? bottom;
+  final double size;
   final Color color;
 
   const _DecorDot({
@@ -311,6 +438,7 @@ class _DecorDot extends StatelessWidget {
     this.left,
     this.right,
     this.bottom,
+    this.size = 8,
     required this.color,
   });
 
@@ -324,11 +452,11 @@ class _DecorDot extends StatelessWidget {
       child: Transform.rotate(
         angle: pi / 4,
         child: Container(
-          width: 8,
-          height: 8,
+          width: size,
+          height: size,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(size * 0.25),
           ),
         ),
       ),
