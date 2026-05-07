@@ -70,6 +70,11 @@ flutter:
     - assets/audio/pest_pop.wav
     - assets/audio/tap_sound.mp3
 
+  fonts:
+    - family: VAGRoundedBold
+      fonts:
+        - asset: assets/fonts/VAG Rounded Bold_0.ttf
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

@@ -7,7 +7,7 @@ import '../../../../main_bindings.dart';
 import '../../domain/entities/pest_model.dart';
 
 class PestWidget extends StatefulWidget {
-  static const Duration hitSequenceDuration = Duration(milliseconds: 200);
+  static const Duration hitSequenceDuration = Duration(milliseconds: 250);
 
   final PestModel pest;
   final VoidCallback onTap;
@@ -134,19 +134,19 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
 
   Widget _buildParticleBurst(Color color, double progress) {
     return SizedBox(
-      width: widget.pest.size * 2.1,
-      height: widget.pest.size * 2.1,
+      width: widget.pest.size * 2,
+      height: widget.pest.size * 2,
       child: Stack(
         alignment: Alignment.center,
         clipBehavior: Clip.none,
-        children: List.generate(10, (index) {
+        children: List.generate(16, (index) {
           return _Particle(
             color: color,
             angle: (index * 36) * pi / 180,
             progress: progress,
             isDark: index % 3 == 0,
-            maxDistance: widget.pest.size * 1.35,
-            startSize: widget.pest.size * 0.16,
+            maxDistance: widget.pest.size * 1,
+            startSize: widget.pest.size * 0.25,
           );
         }),
       ),
@@ -159,11 +159,11 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
       builder: (context, child) {
         final progress = _hitController.value;
         final blobProgress = Curves.easeOutBack.transform(
-          _phase(progress, 0.0, 0.25),
+          _phase(progress, 0.0, 0.30),
         );
-        final impactProgress = _phase(progress, 0.25, 1.0);
+        final impactProgress = _phase(progress, 0.30, 1.0);
 
-        if (impactProgress <= 0.25) {
+        if (impactProgress <= 0.30) {
           return _build3dBlobPest(
             color,
             blobProgress,
@@ -173,9 +173,9 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
 
         final burst = Curves.easeOut.transform(impactProgress);
         final squashPop = Curves.easeOutBack.transform(
-          _phase(impactProgress, 0.25, 0.6),
+          _phase(impactProgress, 0.31, 0.70),
         );
-        final fade = Curves.easeIn.transform(_phase(impactProgress, 0.74, 1.0));
+        final fade = Curves.easeIn.transform(_phase(impactProgress, 0.71, 1.0));
 
         return Stack(
           alignment: Alignment.center,
@@ -199,58 +199,7 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
     );
   }
 
-  // 0.2 second
-  // Widget _buildHitFrame(Color color) {
-  //   return AnimatedBuilder(
-  //     animation: _hitController,
-  //     builder: (context, child) {
-  //       final progress = _hitController.value;
-  //
-  //       // BlobPest3dAnimatedPainter animation within ~0.05s (0.0 to 0.05)
-  //       final blobProgress = Curves.easeOutBack.transform(
-  //         _phase(progress, 0.0, 0.05),
-  //       );
-  //
-  //       // Impact Progress animation (0.05 to 1.0)
-  //       final impactProgress = _phase(progress, 0.05, 1.0);
-  //
-  //       if (impactProgress <= 0.05) {
-  //         // BlobPest3dAnimatedPainter: Show during the first 0.05s
-  //         return _build3dBlobPest(blobProgress, 1.0 + (0.14 * blobProgress));
-  //       }
-  //
-  //       // SquashPop: Animation between 0.05 and 0.15s (0.05 to 0.15)
-  //       final squashPop = Curves.easeOutBack.transform(
-  //         _phase(impactProgress, 0.05, 0.15),
-  //       );
-  //
-  //       // Particle: Animation between 0.15 and 0.20s (0.15 to 0.20)
-  //       final burst = Curves.easeOut.transform(_phase(impactProgress, 0.15, 0.20));
-  //
-  //       // Fade: Animation between 0.20 and 0.25s (0.20 to 0.25)
-  //       final fade = Curves.easeIn.transform(_phase(impactProgress, 0.20, 0.25));
-  //
-  //       return Stack(
-  //         alignment: Alignment.center,
-  //         clipBehavior: Clip.none,
-  //         children: [
-  //           Opacity(
-  //             opacity: 1.0 - fade,
-  //             child: Transform.scale(
-  //               scale: 0.8 + (0.24 * squashPop),
-  //               child: _SquashPestShape(
-  //                 size: widget.pest.size,
-  //                 color: color,
-  //                 progress: impactProgress,
-  //               ),
-  //             ),
-  //           ),
-  //           _buildParticleBurst(color, burst),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
+
   @override
   Widget build(BuildContext context) {
     final Color color = widget.pest.color;

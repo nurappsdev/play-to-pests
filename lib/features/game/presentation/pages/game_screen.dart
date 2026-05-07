@@ -297,22 +297,22 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       elapsed >= _gameDurationSeconds - _endPhaseSeconds;
 
   int _spawnCountForElapsed(int elapsed) {
-    if (elapsed < 8) return 2 + _random.nextInt(2);
-    if (elapsed < 18) return 4 + _random.nextInt(2);
-    if (_isEndPhaseElapsed(elapsed)) return 6 + _random.nextInt(3);
+    if (elapsed < 8) return 4 + _random.nextInt(2);
+    if (elapsed < 18) return 6 + _random.nextInt(2);
+    if (_isEndPhaseElapsed(elapsed)) return 8 + _random.nextInt(3);
     return 5 + _random.nextInt(3);
   }
 
   int _deSpawnDurationForElapsed(int elapsed) {
-    if (elapsed < 8) return 2000;
-    if (elapsed < 18) return 1500;
+    if (elapsed < 8) return 1400;
+    if (elapsed < 18) return 1000;
     if (_isEndPhaseElapsed(elapsed)) return 850;
     return 1000;
   }
 
   double _driftSpeedMultiplierForElapsed(int elapsed) {
-    if (_isEndPhaseElapsed(elapsed)) return 2.1;
-    return elapsed >= 18 ? 1.8 : 1.0;
+    if (_isEndPhaseElapsed(elapsed)) return 6;
+    return elapsed >= 18 ? 5 : 4;
   }
 
   void spawnPest() {
