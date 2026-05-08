@@ -8,8 +8,8 @@ class FeedbackService {
   factory FeedbackService() => _instance;
   FeedbackService._internal();
 
-  static const String _tapSoundAsset = 'assets/audio/pest_pop.wav';
-  static const Duration _maxTapSoundLength = Duration(milliseconds: 120);
+  static const String _tapSoundAsset = 'assets/audio/tap.wav';
+  static const Duration _maxTapSoundLength = Duration(milliseconds: 100);
 
   bool _isInitialized = false;
   bool _hasVibrator = false;
