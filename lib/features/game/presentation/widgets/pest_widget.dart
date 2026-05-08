@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -28,10 +29,10 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
   bool _isTapped = false;
   late final Ticker _ticker;
   late final AnimationController _hitController;
-  Offset _driftOffset = Offset.zero;
+  final ValueNotifier<Offset> _driftOffset = ValueNotifier(Offset.zero);
   Offset _velocity = Offset.zero;
   Duration _nextDirectionChangeAt = Duration.zero;
-  double _idleProgress = 0;
+  final ValueNotifier<double> _idleProgress = ValueNotifier(0);
   final Random _random = Random();
 
   @override
@@ -54,6 +55,8 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
   void dispose() {
     _ticker.dispose();
     _hitController.dispose();
+    _driftOffset.dispose();
+    _idleProgress.dispose();
     super.dispose();
   }
 
@@ -80,20 +83,18 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
   void _onTick(Duration elapsed) {
     if (_isTapped || !mounted) return;
 
-    setState(() {
-      _idleProgress = (elapsed.inMilliseconds % 1400) / 1400;
+    _idleProgress.value = (elapsed.inMilliseconds % 1400) / 1400;
 
-      if (elapsed >= _nextDirectionChangeAt) {
-        _changeDirection(elapsed);
-      }
+    if (elapsed >= _nextDirectionChangeAt) {
+      _changeDirection(elapsed);
+    }
 
-      final driftSpeedMultiplier = widget.pest.driftSpeedMultiplier;
-      final jitter = Offset(
-        (_random.nextDouble() - 0.5) * 0.00018 * driftSpeedMultiplier,
-        (_random.nextDouble() - 0.5) * 0.00018 * driftSpeedMultiplier,
-      );
-      _driftOffset += _velocity + jitter;
-    });
+    final driftSpeedMultiplier = widget.pest.driftSpeedMultiplier;
+    final jitter = Offset(
+      (_random.nextDouble() - 0.5) * 0.00018 * driftSpeedMultiplier,
+      (_random.nextDouble() - 0.5) * 0.00018 * driftSpeedMultiplier,
+    );
+    _driftOffset.value = _driftOffset.value + _velocity + jitter;
   }
 
   void _executeInstantTapEffects() {
@@ -203,41 +204,51 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final Color color = widget.pest.color;
-    final currentAlignment = Alignment(
-      (widget.pest.alignment.x + _driftOffset.dx).clamp(-1.0, 1.0),
-      (widget.pest.alignment.y + _driftOffset.dy).clamp(-1.0, 1.0),
+
+    final Widget content = GestureDetector(
+      onTapDown: (_) => _executeInstantTapEffects(),
+      child: _isTapped
+          ? _buildHitFrame(color)
+          : Stack(
+              alignment: Alignment.center,
+              children: [
+                _SimplePestShape(
+                      size: widget.pest.size,
+                      color: color,
+                      progress: _idleProgress,
+                    )
+                    .animate(
+                      onPlay: (controller) =>
+                          controller.repeat(reverse: true),
+                    )
+                    .shake(
+                      hz: 3,
+                      offset: const Offset(2, 2),
+                      duration: 200.ms,
+                    ),
+              ],
+            ).animate().scale(
+              begin: const Offset(0, 0),
+              end: const Offset(1, 1),
+              duration: 300.ms,
+              curve: Curves.easeOutBack,
+            ),
     );
 
-    return Align(
-      alignment: currentAlignment,
-      child: GestureDetector(
-        onTapDown: (_) => _executeInstantTapEffects(),
-        child: _isTapped
-            ? _buildHitFrame(color)
-            : Stack(
-                alignment: Alignment.center,
-                children: [
-                  _SimplePestShape(
-                        size: widget.pest.size,
-                        color: color,
-                        progress: _idleProgress,
-                      )
-                      .animate(
-                        onPlay: (controller) =>
-                            controller.repeat(reverse: true),
-                      )
-                      .shake(
-                        hz: 3,
-                        offset: const Offset(2, 2),
-                        duration: 200.ms,
-                      ),
-                ],
-              ).animate().scale(
-                begin: const Offset(0, 0),
-                end: const Offset(1, 1),
-                duration: 300.ms,
-                curve: Curves.easeOutBack,
-              ),
+    return RepaintBoundary(
+      child: ValueListenableBuilder<Offset>(
+        valueListenable: _driftOffset,
+        builder: (context, drift, child) {
+          final currentAlignment = Alignment(
+            (widget.pest.alignment.x + drift.dx).clamp(-1.0, 1.0),
+            (widget.pest.alignment.y + drift.dy).clamp(-1.0, 1.0),
+          );
+          return Align(
+            alignment: currentAlignment,
+            child: child,
+          );
+        },
+        child: content,
       ),
     );
   }
@@ -246,7 +257,7 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
 class _SimplePestShape extends StatelessWidget {
   final double size;
   final Color color;
-  final double progress;
+  final ValueListenable<double> progress;
 
   const _SimplePestShape({
     required this.size,
@@ -270,12 +281,13 @@ class BlobPest3dAnimatedPainter extends CustomPainter {
   final Color color;
   final double progress;
   final double sizeScale;
+  final _SplatPalette _palette;
 
-  const BlobPest3dAnimatedPainter({
+  BlobPest3dAnimatedPainter({
     required this.color,
     required this.progress,
     required this.sizeScale,
-  });
+  }) : _palette = _SplatPalette.from(color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -285,17 +297,16 @@ class BlobPest3dAnimatedPainter extends CustomPainter {
     final bob = sin(rotation * 1.8) * unit * 0.025;
     final pulse = 1 + sin(rotation * 2.4) * 0.035;
     final bodyCenter = center.translate(0, bob);
-    final palette = _SplatPalette.from(color);
 
     _drawShadow(canvas, bodyCenter, unit, pulse);
     _drawFluffyWing(canvas, bodyCenter, unit, rotation, isLeft: true);
     _drawFluffyWing(canvas, bodyCenter, unit, rotation, isLeft: false);
     _drawLegs(canvas, bodyCenter, unit, rotation);
-    _drawBody(canvas, bodyCenter, unit, rotation, pulse, palette);
+    _drawBody(canvas, bodyCenter, unit, rotation, pulse, _palette);
     _drawFace(canvas, bodyCenter, unit, rotation, pulse);
     // _drawAntennae(canvas, bodyCenter, unit, rotation);
     _drawAntennae(canvas, bodyCenter, unit, rotation);
-    _drawRedLines(canvas, center, unit, rotation, palette.base);
+    _drawRedLines(canvas, center, unit, rotation, _palette.base);
   }
 
   void _drawShadow(Canvas canvas, Offset center, double unit, double pulse) {
@@ -737,36 +748,39 @@ class _Particle extends StatelessWidget {
 
 class _BlobPest3dPainter extends CustomPainter {
   final Color color;
-  final double progress;
+  final ValueListenable<double> progress;
+  final Color _highlight;
+  final Color _bright;
+  final Color _deep;
 
-  const _BlobPest3dPainter({required this.color, required this.progress});
+  _BlobPest3dPainter({required this.color, required this.progress})
+      : _highlight = _shiftLightness(color, 0.3),
+        _bright = _shiftLightness(color, 0.15),
+        _deep = _shiftLightness(color, -0.2),
+        super(repaint: progress);
+
+  static Color _shiftLightness(Color color, double delta) {
+    final hsl = HSLColor.fromColor(color);
+    return hsl
+        .withLightness((hsl.lightness + delta).clamp(0.0, 1.0))
+        .toColor();
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
+    final p = progress.value;
     final unit = min(size.width, size.height);
     final center = Offset(size.width / 2, size.height / 2);
-    final rotation = progress * 2 * pi;
+    final rotation = p * 2 * pi;
     final bob = sin(rotation * 1.8) * unit * 0.025;
     final pulse = 1 + sin(rotation * 2.4) * 0.035;
     final bodyCenter = center.translate(0, bob);
-
-    // Create palette from base color
-    final hsl = HSLColor.fromColor(color);
-    final highlight = hsl
-        .withLightness((hsl.lightness + 0.3).clamp(0.0, 1.0))
-        .toColor();
-    final bright = hsl
-        .withLightness((hsl.lightness + 0.15).clamp(0.0, 1.0))
-        .toColor();
-    final deep = hsl
-        .withLightness((hsl.lightness - 0.2).clamp(0.0, 1.0))
-        .toColor();
 
     _drawShadow(canvas, bodyCenter, unit, pulse);
     _drawWing(canvas, bodyCenter, unit, rotation, isLeft: true);
     _drawWing(canvas, bodyCenter, unit, rotation, isLeft: false);
     _drawLegs(canvas, bodyCenter, unit, rotation);
-    _drawBody(canvas, bodyCenter, unit, pulse, highlight, bright, deep);
+    _drawBody(canvas, bodyCenter, unit, pulse, _highlight, _bright, _deep);
     _drawFace(canvas, bodyCenter, unit, rotation);
     _drawAntennae(canvas, bodyCenter, unit, rotation);
   }
@@ -1034,7 +1048,8 @@ class _BlobPest3dPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _BlobPest3dPainter oldDelegate) {
-    return oldDelegate.color != color || oldDelegate.progress != progress;
+    return oldDelegate.color != color ||
+        !identical(oldDelegate.progress, progress);
   }
 }
 
@@ -1191,8 +1206,10 @@ class _BlobCapsulePestPainter extends CustomPainter {
 class _SplatPest3dPainter extends CustomPainter {
   final Color color;
   final double progress;
+  final _SplatPalette _palette;
 
-  const _SplatPest3dPainter({required this.color, required this.progress});
+  _SplatPest3dPainter({required this.color, required this.progress})
+      : _palette = _SplatPalette.from(color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1204,10 +1221,9 @@ class _SplatPest3dPainter extends CustomPainter {
     final bodyCenter = center.translate(0, bob);
     final bodyWidth = unit * 0.62 * pulse;
     final bodyHeight = unit * 0.45 * (1 / pulse);
-    final palette = _SplatPalette.from(color);
 
     _drawShadow(canvas, bodyCenter, unit, pulse);
-    _drawMotionLines(canvas, bodyCenter, unit, rotation, palette);
+    _drawMotionLines(canvas, bodyCenter, unit, rotation, _palette);
     _drawBody(
       canvas,
       bodyCenter,
@@ -1215,7 +1231,7 @@ class _SplatPest3dPainter extends CustomPainter {
       bodyHeight,
       unit,
       rotation,
-      palette,
+      _palette,
     );
     _drawFace(canvas, bodyCenter, unit, rotation, pulse);
     _drawAntennae(canvas, bodyCenter, unit, rotation);

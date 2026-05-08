@@ -580,17 +580,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
                         // Rain-like animated confetti above the burst
                         Positioned.fill(
-                          child: AnimatedBuilder(
-                            animation: _confettiController,
-                            builder: (_, __) {
-                              return CustomPaint(
-                                painter: _ConfettiPainter(
-                                  _confetti,
-                                  _confettiStopwatch.elapsedMicroseconds /
-                                      Duration.microsecondsPerSecond,
-                                ),
-                              );
-                            },
+                          child: RepaintBoundary(
+                            child: AnimatedBuilder(
+                              animation: _confettiController,
+                              builder: (_, __) {
+                                return CustomPaint(
+                                  painter: _ConfettiPainter(
+                                    _confetti,
+                                    _confettiStopwatch.elapsedMicroseconds /
+                                        Duration.microsecondsPerSecond,
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         ),
 
