@@ -601,60 +601,120 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 // TIME'S UP!
-                                const Text(
-                                  "TIME'S UP!",
-                                  style: TextStyle(
-                                    fontSize: 30,
-                                    fontWeight: FontWeight.w900,
-                                    color: Color(0xFF1A1C1E),
-                                    letterSpacing: 3,
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween<double>(begin: 0.8, end: 1.1),
+                                  duration: const Duration(milliseconds: 400),
+                                  builder: (context, scale, child) {
+                                    return Transform.scale(
+                                      scale: scale,
+                                      child: child,
+                                    );
+                                  },
+                                  child: const Text(
+                                    "TIME'S UP!",
+                                    style: TextStyle(
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF1A1C1E),
+                                      letterSpacing: 3,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 18),
 
                                 // STRESS REDUCED label
-                                const Text(
-                                  'STRESS REDUCED',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF1A1C1E),
-                                    letterSpacing: 3,
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween<double>(begin: 0.8, end: 1.1),
+                                  duration: const Duration(milliseconds: 400),
+                                  builder: (context, scale, child) {
+                                    return Transform.scale(
+                                      scale: scale,
+                                      child: child,
+                                    );
+                                  },
+                                  child: const Text(
+                                    'STRESS REDUCED',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1A1C1E),
+                                      letterSpacing: 3,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 6),
 
                                 // Big green percentage with 3D effect
-                                CustomPaint(
-                                  size: const Size(260, 110),
-                                  painter: _Score3DPainter(
-                                    '$_score%',
-                                    78,
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween<double>(begin: 0.8, end: 1.1),
+                                  duration: const Duration(milliseconds: 400),
+                                  builder: (context, scale, child) {
+                                    return Transform.scale(
+                                      scale: scale,
+                                      child: child,
+                                    );
+                                  },
+                                  child: TweenAnimationBuilder<double>(
+                                    tween: Tween<double>(
+                                      begin: 0,
+                                      end: _score.toDouble(),
+                                    ),
+                                    duration: const Duration(milliseconds: 500),
+                                    curve: Curves.easeOut,
+                                    builder: (context, value, _) {
+                                      return CustomPaint(
+                                        size: const Size(260, 110),
+                                        painter: _Score3DPainter(
+                                          '${value.round()}%',
+                                          78,
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
 
                                 const SizedBox(height: 24),
 
                                 // RETRY button (PNG with press-to-shrink)
-                                _RetryImageButton(
-                                  asset: 'assets/images/retry_button.png',
-                                  width: 200,
-                                  onTap: _startGame,
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween<double>(begin: 0.8, end: 1.1),
+                                  duration: const Duration(milliseconds: 400),
+                                  builder: (context, scale, child) {
+                                    return Transform.scale(
+                                      scale: scale,
+                                      child: child,
+                                    );
+                                  },
+                                  child: _RetryImageButton(
+                                    asset: 'assets/images/retry_button.png',
+                                    width: 200,
+                                    onTap: _startGame,
+                                  ),
                                 ),
                                 const SizedBox(height: 10),
 
                                 // HOME text button
-                                TextButton(
-                                  onPressed: widget.onQuitPressed,
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: const Color(0xFF1A1C1E),
-                                  ),
-                                  child: const Text(
-                                    'HOME',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 2,
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween<double>(begin: 0.8, end: 1.1),
+                                  duration: const Duration(milliseconds: 400),
+                                  builder: (context, scale, child) {
+                                    return Transform.scale(
+                                      scale: scale,
+                                      child: child,
+                                    );
+                                  },
+                                  child: TextButton(
+                                    onPressed: widget.onQuitPressed,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: const Color(0xFF1A1C1E),
+                                    ),
+                                    child: const Text(
+                                      'HOME',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 2,
+                                      ),
                                     ),
                                   ),
                                 ),
