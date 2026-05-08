@@ -173,9 +173,9 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
 
         final burst = Curves.easeOut.transform(impactProgress);
         final squashPop = Curves.easeOutBack.transform(
-          _phase(impactProgress, 0.30, 0.85),
+          _phase(impactProgress, 0.30, 0.78),
         );
-        final fade = Curves.easeIn.transform(_phase(impactProgress, 0.85, 1.0));
+        final fade = Curves.easeIn.transform(_phase(impactProgress, 0.78, 1.0));
 
         return Stack(
           alignment: Alignment.center,
