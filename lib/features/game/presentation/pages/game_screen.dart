@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import '../../../../main_bindings.dart';
 import '../../../score/domain/entities/score_entity.dart';
 import '../../domain/entities/pest_model.dart';
@@ -539,6 +540,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               ),
 
+              // ── Live FPS counter ──
+              const Positioned(
+                top: 20,
+                left: 12,
+                child: _FpsCounter(),
+              ),
+
               // ── Pests ──
               ..._activePests.map(
                     (pest) => PestWidget(
@@ -903,6 +911,70 @@ class _RetryImageButtonState extends State<_RetryImageButton> {
           width: widget.width,
           fit: BoxFit.contain,
           filterQuality: FilterQuality.high,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Live FPS counter ─────────────────────────────────────────────────────
+class _FpsCounter extends StatefulWidget {
+  const _FpsCounter();
+
+  @override
+  State<_FpsCounter> createState() => _FpsCounterState();
+}
+
+class _FpsCounterState extends State<_FpsCounter>
+    with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+  int _frameCount = 0;
+  Duration _windowStart = Duration.zero;
+  String _fpsText = '-- FPS';
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker(_onTick)..start();
+  }
+
+  void _onTick(Duration elapsed) {
+    _frameCount++;
+    final delta = elapsed - _windowStart;
+    if (delta >= const Duration(milliseconds: 500)) {
+      final seconds =
+          delta.inMicroseconds / Duration.microsecondsPerSecond;
+      final fps = seconds > 0 ? _frameCount / seconds : 0;
+      _frameCount = 0;
+      _windowStart = elapsed;
+      setState(() {
+        _fpsText = '${fps.toStringAsFixed(0)} FPS';
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          _fpsText,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
