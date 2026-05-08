@@ -7,6 +7,7 @@ import '../../../score/domain/entities/score_entity.dart';
 import '../../domain/entities/pest_model.dart';
 import '../widgets/pest_widget.dart';
 
+
 // ─── Confetti Particle ─────────────────────────────────────────────────────
 class _ConfettiPiece {
   final double x;            // 0..1 base horizontal position
@@ -35,7 +36,15 @@ class _ConfettiPiece {
     required this.isSquare,
   });
 }
+class _HitRecord {
+  final double y;
+  final DateTime time;
 
+  _HitRecord({
+    required this.y,
+    required this.time,
+  });
+}
 class _ConfettiPainter extends CustomPainter {
   final List<_ConfettiPiece> pieces;
   final double elapsedSeconds;
@@ -162,15 +171,21 @@ class _Score3DPainter extends CustomPainter {
 // ─── Game Screen ───────────────────────────────────────────────────────────
 class GameScreen extends StatefulWidget {
   final VoidCallback onQuitPressed;
+
   const GameScreen({super.key, required this.onQuitPressed});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
 }
 
+
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   static const int _gameDurationSeconds = 30;
   static const int _endPhaseSeconds = 8;
+  final List<_HitRecord> _recentHits = [];
+  int _topHits = 0;
+  int _centerHits = 0;
+  int _bottomHits = 0;
 
   int _score = 0;
   int _gameTimeRemaining = _gameDurationSeconds;
@@ -323,16 +338,93 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   double _driftSpeedMultiplierForElapsed(int elapsed) {
-    if (_isEndPhaseElapsed(elapsed)) return 6;
-    return elapsed >= 18 ? 5 : 4;
+    if (_isEndPhaseElapsed(elapsed)) return 12;
+    return elapsed >= 18 ? 10 : 8;
+  }
+  void _cleanupOldHits() {
+    final now = DateTime.now();
+
+    _recentHits.removeWhere(
+          (hit) => now.difference(hit.time).inMilliseconds > 3000,
+    );
+  }
+  Alignment generateSafeAlignment() {
+    _cleanupOldHits();
+
+    int topHits = 0;
+    int centerHits = 0;
+    int bottomHits = 0;
+
+    for (final hit in _recentHits) {
+      if (hit.y < -0.3) {
+        topHits++;
+      } else if (hit.y > 0.3) {
+        bottomHits++;
+      } else {
+        centerHits++;
+      }
+    }
+
+    String? avoidZone;
+
+    final maxHits = [topHits, centerHits, bottomHits]
+        .reduce((a, b) => a > b ? a : b);
+
+    // only avoid if enough recent taps
+    if (maxHits >= 3) {
+      if (topHits == maxHits) {
+        avoidZone = 'top';
+      } else if (bottomHits == maxHits) {
+        avoidZone = 'bottom';
+      } else {
+        avoidZone = 'center';
+      }
+    }
+
+    Alignment alignment;
+    bool overlaps;
+
+    do {
+      double y;
+
+      // no dominant zone yet
+      if (avoidZone == null) {
+        y = _random.nextDouble() * 1.8 - 0.9;
+      }
+      // avoid top
+      else if (avoidZone == 'top') {
+        y = -0.1 + _random.nextDouble();
+      }
+      // avoid bottom
+      else if (avoidZone == 'bottom') {
+        y = -0.9 + _random.nextDouble();
+      }
+      // avoid center
+      else {
+        y = _random.nextBool()
+            ? (-0.9 + _random.nextDouble() * 0.4)
+            : (0.5 + _random.nextDouble() * 0.4);
+      }
+
+      alignment = Alignment(
+        _random.nextDouble() * 1.8 - 0.9,
+        y.clamp(-0.9, 0.9),
+      );
+
+      overlaps = _activePests.any((p) {
+        final dx = p.alignment.x - alignment.x;
+        final dy = p.alignment.y - alignment.y;
+
+        return (dx * dx + dy * dy) < 0.15;
+      });
+    } while (overlaps);
+
+    return alignment;
   }
 
   void spawnPest() {
     final id = _pestIdCounter++;
-    final alignment = Alignment(
-      _random.nextDouble() * 1.6 - 0.8,
-      _random.nextDouble() * 1.6 - 0.8,
-    );
+    final alignment = generateSafeAlignment();
     const colors = [
       Color(0xFFF4D13D),
       Color(0xFFF12A17),
@@ -351,6 +443,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           _random.nextDouble() * 3 - 1.5,
           _random.nextDouble() * 3 - 1.5,
         ),
+        // startOffset: const Offset(1.5, 0),
         color: color,
         size: 96.0,
         driftSpeedMultiplier: _driftSpeedMultiplierForElapsed(elapsed),
@@ -367,17 +460,34 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void _handleHit(int id) async {
     if (!_isGameRunning) return;
+
     final index = _activePests.indexWhere((p) => p.id == id);
+
     if (index == -1 || _activePests[index].isHit) return;
+
+    final y = _activePests[index].alignment.y;
+
     _activePests[index].isHit = true;
-    setState(() => _score++);
+
+    setState(() {
+      _score++;
+
+      _recentHits.add(
+        _HitRecord(
+          y: _activePests[index].alignment.y,
+          time: DateTime.now(),
+        ),
+      );
+    });
+
     Future.delayed(PestWidget.hitSequenceDuration, () {
       if (mounted) {
-        setState(() => _activePests.removeWhere((p) => p.id == id));
+        setState(() {
+          _activePests.removeWhere((p) => p.id == id);
+        });
       }
     });
   }
-
   Future<void> _endGame() async {
     _cleanupTimers();
     setState(() {
@@ -395,13 +505,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         ScoreEntity(score: _score, dateTime: DateTime.now()),
       );
     }
-  }
-
-  // Stress relief scales with how many pests were squashed.
-  // Linear: score × 1.1, capped at 99%.
-  int get _stressReducedPercent {
-    final raw = (_score * 1.1).round();
-    return raw.clamp(0, 99);
   }
 
   @override
@@ -525,7 +628,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                 CustomPaint(
                                   size: const Size(260, 110),
                                   painter: _Score3DPainter(
-                                    '$_stressReducedPercent%',
+                                    '$_score%',
                                     78,
                                   ),
                                 ),

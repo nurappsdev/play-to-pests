@@ -39,8 +39,8 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
     super.initState();
     final driftSpeedMultiplier = widget.pest.driftSpeedMultiplier;
     _velocity = Offset(
-      (_random.nextDouble() - 0.5) * 0.0036 * driftSpeedMultiplier,
-      (_random.nextDouble() - 0.5) * 0.0036 * driftSpeedMultiplier,
+      (_random.nextDouble() - 0.5) * 0.0012 * driftSpeedMultiplier,
+      (_random.nextDouble() - 0.5) * 0.0012 * driftSpeedMultiplier,
     );
     _scheduleNextDirectionChange(Duration.zero);
     _ticker = createTicker(_onTick)..start();
@@ -65,11 +65,11 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
   void _changeDirection(Duration elapsed) {
     final driftSpeedMultiplier = widget.pest.driftSpeedMultiplier;
     _velocity += Offset(
-      (_random.nextDouble() - 0.5) * 0.0012 * driftSpeedMultiplier,
-      (_random.nextDouble() - 0.5) * 0.0012 * driftSpeedMultiplier,
+      (_random.nextDouble() - 0.5) * 0.004 * driftSpeedMultiplier,
+      (_random.nextDouble() - 0.5) * 0.004 * driftSpeedMultiplier,
     );
 
-    final maxVelocity = 0.007 * driftSpeedMultiplier;
+    final maxVelocity = 0.02 * driftSpeedMultiplier;
     if (_velocity.distance > maxVelocity) {
       _velocity = _velocity / _velocity.distance * maxVelocity;
     }
@@ -139,7 +139,7 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
       child: Stack(
         alignment: Alignment.center,
         clipBehavior: Clip.none,
-        children: List.generate(16, (index) {
+        children: List.generate(10, (index) {
           return _Particle(
             color: color,
             angle: (index * 36) * pi / 180,
@@ -173,9 +173,9 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
 
         final burst = Curves.easeOut.transform(impactProgress);
         final squashPop = Curves.easeOutBack.transform(
-          _phase(impactProgress, 0.31, 0.70),
+          _phase(impactProgress, 0.30, 0.85),
         );
-        final fade = Curves.easeIn.transform(_phase(impactProgress, 0.71, 1.0));
+        final fade = Curves.easeIn.transform(_phase(impactProgress, 0.85, 1.0));
 
         return Stack(
           alignment: Alignment.center,

@@ -137,6 +137,9 @@ class _StartScreenState extends State<StartScreen>
                 final width = constraints.maxWidth;
                 final height = constraints.maxHeight;
                 final shortestSide = min(width, height);
+                final bugGap = (height * 0.045)
+                    .clamp(16.0, 40.0)
+                    .toDouble();
 
                 final bugSize = min(width * 0.34, height * 0.19)
                     .clamp(76.0, 140.0)
@@ -168,14 +171,22 @@ class _StartScreenState extends State<StartScreen>
                     buttonVisualHeight -
                     buttonBottom -
                     24;
-                final titleTop = min(
-                  max(height * 0.31, topBugTop + bugSize * 0.30),
-                  max(16.0, maxTitleTop),
-                ).toDouble();
-
+                final titleTop =
+                (height * 0.28)
+                    .clamp(120.0, 260.0)
+                    .toDouble();
+                final topBugY =
+                    titleTop - bugSize - bugGap;
                 final dotSize =
                     (shortestSide * 0.02).clamp(6.0, 10.0).toDouble();
                 final showLowerBugs = height >= 520;
+                final gap = (height * 0.04)
+                    .clamp(16.0, 36.0)
+                    .toDouble();
+                final lowerBugY =
+                    titleTop + titleHeight + bugGap;
+                final buttonTop =
+                    lowerBugY + bugSize + gap;
 
                 return Stack(
                   fit: StackFit.expand,
@@ -216,7 +227,7 @@ class _StartScreenState extends State<StartScreen>
                       color: const Color(0xFF8BC34A),
                     ),
                     Positioned(
-                      top: topBugTop,
+                      top: topBugY,
                       left: sideInset,
                       child: _CornerBug(
                         asset: 'assets/images/Yellow_bug.png',
@@ -225,7 +236,7 @@ class _StartScreenState extends State<StartScreen>
                       ),
                     ),
                     Positioned(
-                      top: topBugTop,
+                      top:  titleTop - bugSize - bugGap,
                       right: sideInset,
                       child: _CornerBug(
                         asset: 'assets/images/Red_bug.png',
@@ -236,7 +247,7 @@ class _StartScreenState extends State<StartScreen>
                     ),
                     if (showLowerBugs)
                       Positioned(
-                        bottom: lowerBugBottom,
+                        top: lowerBugY,
                         left: sideInset,
                         child: _CornerBug(
                           asset: 'assets/images/Purple_bug.png',
@@ -247,7 +258,7 @@ class _StartScreenState extends State<StartScreen>
                       ),
                     if (showLowerBugs)
                       Positioned(
-                        bottom: lowerBugBottom,
+                        top: lowerBugY,
                         right: sideInset,
                         child: _CornerBug(
                           asset: 'assets/images/Green_bug.png',
@@ -257,7 +268,7 @@ class _StartScreenState extends State<StartScreen>
                         ),
                       ),
                     Positioned(
-                      top: titleTop,
+                      top: titleTop ,
                       left: 0,
                       right: 0,
                       child: Center(
@@ -275,7 +286,7 @@ class _StartScreenState extends State<StartScreen>
                     Positioned(
                       left: 0,
                       right: 0,
-                      bottom: buttonBottom,
+                      top: buttonTop,
                       child: Center(
                         child: _ImageButton(
                           asset: 'assets/images/Button.png',
