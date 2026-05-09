@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import '../../../../main_bindings.dart';
@@ -344,9 +345,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _cleanupOldHits() {
     final now = DateTime.now();
 
-    _recentHits.removeWhere(
-          (hit) => now.difference(hit.time).inMilliseconds > 3000,
-    );
+    while (_recentHits.isNotEmpty &&
+        now.difference(_recentHits.first.time).inMilliseconds > 1500) {
+      _recentHits.removeAt(0);
+    }
   }
   Alignment generateSafeAlignment() {
     _cleanupOldHits();
@@ -354,7 +356,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     int topHits = 0;
     int centerHits = 0;
     int bottomHits = 0;
-
+    int attempts = 0;
     for (final hit in _recentHits) {
       if (hit.y < -0.3) {
         topHits++;
@@ -367,8 +369,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     String? avoidZone;
 
-    final maxHits = [topHits, centerHits, bottomHits]
-        .reduce((a, b) => a > b ? a : b);
+    final maxHits = math.max(
+      topHits,
+      math.max(centerHits, bottomHits),
+    );
 
     // only avoid if enough recent taps
     if (maxHits >= 3) {
@@ -411,13 +415,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         y.clamp(-0.9, 0.9),
       );
 
-      overlaps = _activePests.any((p) {
-        final dx = p.alignment.x - alignment.x;
-        final dy = p.alignment.y - alignment.y;
 
-        return (dx * dx + dy * dy) < 0.15;
-      });
-    } while (overlaps);
+      if (attempts < 5) {
+        overlaps = _activePests.any((p) {
+          final dx = p.alignment.x - alignment.x;
+          final dy = p.alignment.y - alignment.y;
+
+          return (dx * dx + dy * dy) < 0.12;
+        });
+      } else {
+        overlaps = false;
+      }
+
+      attempts++;
+    } while (overlaps && attempts < 12);
 
     return alignment;
   }

@@ -38,9 +38,9 @@ class FeedbackService {
   void triggerTapFeedback() {
     try {
       if (_isInitialized && _tapSound != null) {
-        final handle = _soloud.play(_tapSound!, volume: 0.55);
-        _soloud.setRelativePlaySpeed(handle, 1.18);
-        _soloud.scheduleStop(handle, _maxTapSoundLength);
+        final handle = _soloud.play(_tapSound!, volume:0.5);
+        // _soloud.setRelativePlaySpeed(handle, 1.18);
+        // _soloud.scheduleStop(handle, _maxTapSoundLength);
       }
     } catch (e) {
       if (kDebugMode) debugPrint('Tap sound error: $e');
@@ -56,7 +56,7 @@ class FeedbackService {
       HapticFeedback.lightImpact();
     }
 
-    HapticFeedback.selectionClick();
+    // HapticFeedback.selectionClick();
   }
 
   Future<void> dispose() async {
