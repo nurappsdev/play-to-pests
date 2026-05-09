@@ -266,7 +266,9 @@ class _StartScreenState extends State<StartScreen>
                     Positioned(
                       top: topBugY,
                       left: sideInset,
-                      child: _CornerBug(
+                      child:  Transform.scale(
+                        scale: 0.92,
+                        child :_CornerBug(
                         asset: 'assets/images/Yellow_bug.png',
                         size: bugSize,
                         controller: _controller,
@@ -275,45 +277,55 @@ class _StartScreenState extends State<StartScreen>
                         entranceFrom: const Offset(-1.6, -0.6),
                       ),
                     ),
+                ),
                     Positioned(
-                      top:  titleTop - bugSize - bugGap,
+                      top: titleTop - bugSize - bugGap,
                       right: sideInset,
-                      child: _CornerBug(
-                        asset: 'assets/images/Red_bug.png',
-                        size: bugSize,
-                        controller: _controller,
-                        phaseOffset: 0.35,
-                        entrance: _entranceController,
-                        entranceInterval: _bugRedInterval,
-                        entranceFrom: const Offset(1.6, -0.6),
+                      child: Transform.scale(
+                        scale: 1.2,
+                        child: _CornerBug(
+                          asset: 'assets/images/Red_bug.png',
+                          size: bugSize,
+                          controller: _controller,
+                          phaseOffset: 0.35,
+                          entrance: _entranceController,
+                          entranceInterval: _bugRedInterval,
+                          entranceFrom: const Offset(1.6, -0.6),
+                        ),
                       ),
                     ),
                     if (showLowerBugs)
                       Positioned(
                         top: lowerBugY,
                         left: sideInset,
-                        child: _CornerBug(
-                          asset: 'assets/images/Purple_bug.png',
-                          size: bugSize,
-                          controller: _controller,
-                          phaseOffset: 0.6,
-                          entrance: _entranceController,
-                          entranceInterval: _bugPurpleInterval,
-                          entranceFrom: const Offset(-1.6, 0.8),
+                        child: Transform.scale(
+                          scale: 1.10,
+                          child: _CornerBug(
+                            asset: 'assets/images/Purple_bug.png',
+                            size: bugSize,
+                            controller: _controller,
+                            phaseOffset: 0.6,
+                            entrance: _entranceController,
+                            entranceInterval: _bugPurpleInterval,
+                            entranceFrom: const Offset(-1.6, 0.8),
+                          ),
                         ),
                       ),
                     if (showLowerBugs)
                       Positioned(
                         top: lowerBugY,
                         right: sideInset,
-                        child: _CornerBug(
-                          asset: 'assets/images/Green_bug.png',
-                          size: bugSize,
-                          controller: _controller,
-                          phaseOffset: 0.85,
-                          entrance: _entranceController,
-                          entranceInterval: _bugGreenInterval,
-                          entranceFrom: const Offset(1.6, 0.8),
+                        child: Transform.scale(
+                          scale: 1.26, // increase size (0.8 = smaller, 1.3 = bigger)
+                          child: _CornerBug(
+                            asset: 'assets/images/Green_bug.png',
+                            size: bugSize,
+                            controller: _controller,
+                            phaseOffset: 0.85,
+                            entrance: _entranceController,
+                            entranceInterval: _bugGreenInterval,
+                            entranceFrom: const Offset(1.6, 0.8),
+                          ),
                         ),
                       ),
                     Positioned(
