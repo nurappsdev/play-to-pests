@@ -15,8 +15,18 @@ class StartScreen extends StatefulWidget {
 }
 
 class _StartScreenState extends State<StartScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _controller;
+  late final AnimationController _entranceController;
+  late final Animation<double> _titleScale;
+  late final Animation<double> _titleFade;
+  late final Animation<double> _buttonFade;
+  late final Animation<double> _buttonSlide;
+
+  static const _bugYellowInterval = Interval(0.00, 0.55, curve: Curves.easeOutCubic);
+  static const _bugRedInterval = Interval(0.10, 0.65, curve: Curves.easeOutCubic);
+  static const _bugPurpleInterval = Interval(0.20, 0.75, curve: Curves.easeOutCubic);
+  static const _bugGreenInterval = Interval(0.30, 0.85, curve: Curves.easeOutCubic);
 
   static const _sideConfetti = <_ConfettiPiece>[
     _ConfettiPiece(
@@ -108,11 +118,38 @@ class _StartScreenState extends State<StartScreen>
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat();
+
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+    _titleScale = Tween<double>(begin: 0.55, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.40, 0.95, curve: Curves.elasticOut),
+      ),
+    );
+    _titleFade = CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.40, 0.70, curve: Curves.easeOut),
+    );
+    _buttonFade = CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.65, 1.0, curve: Curves.easeOut),
+    );
+    _buttonSlide = Tween<double>(begin: 24.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.65, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+    _entranceController.forward();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _entranceController.dispose();
     super.dispose();
   }
 
@@ -233,6 +270,9 @@ class _StartScreenState extends State<StartScreen>
                         asset: 'assets/images/Yellow_bug.png',
                         size: bugSize,
                         controller: _controller,
+                        entrance: _entranceController,
+                        entranceInterval: _bugYellowInterval,
+                        entranceFrom: const Offset(-1.6, -0.6),
                       ),
                     ),
                     Positioned(
@@ -243,6 +283,9 @@ class _StartScreenState extends State<StartScreen>
                         size: bugSize,
                         controller: _controller,
                         phaseOffset: 0.35,
+                        entrance: _entranceController,
+                        entranceInterval: _bugRedInterval,
+                        entranceFrom: const Offset(1.6, -0.6),
                       ),
                     ),
                     if (showLowerBugs)
@@ -254,6 +297,9 @@ class _StartScreenState extends State<StartScreen>
                           size: bugSize,
                           controller: _controller,
                           phaseOffset: 0.6,
+                          entrance: _entranceController,
+                          entranceInterval: _bugPurpleInterval,
+                          entranceFrom: const Offset(-1.6, 0.8),
                         ),
                       ),
                     if (showLowerBugs)
@@ -265,6 +311,9 @@ class _StartScreenState extends State<StartScreen>
                           size: bugSize,
                           controller: _controller,
                           phaseOffset: 0.85,
+                          entrance: _entranceController,
+                          entranceInterval: _bugGreenInterval,
+                          entranceFrom: const Offset(1.6, 0.8),
                         ),
                       ),
                     Positioned(
@@ -272,13 +321,25 @@ class _StartScreenState extends State<StartScreen>
                       left: 0,
                       right: 0,
                       child: Center(
-                        child: SizedBox(
-                          width: titleWidth,
-                          height: titleHeight,
-                          child: Image.asset(
-                            'assets/images/Text.png',
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.high,
+                        child: AnimatedBuilder(
+                          animation: _entranceController,
+                          builder: (_, child) {
+                            return Opacity(
+                              opacity: _titleFade.value,
+                              child: Transform.scale(
+                                scale: _titleScale.value,
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: SizedBox(
+                            width: titleWidth,
+                            height: titleHeight,
+                            child: Image.asset(
+                              'assets/images/Text.png',
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.high,
+                            ),
                           ),
                         ),
                       ),
@@ -288,10 +349,22 @@ class _StartScreenState extends State<StartScreen>
                       right: 0,
                       top: buttonTop,
                       child: Center(
-                        child: _ImageButton(
-                          asset: 'assets/images/Button.png',
-                          width: buttonWidth,
-                          onTap: widget.onStartPressed,
+                        child: AnimatedBuilder(
+                          animation: _entranceController,
+                          builder: (_, child) {
+                            return Opacity(
+                              opacity: _buttonFade.value,
+                              child: Transform.translate(
+                                offset: Offset(0, _buttonSlide.value),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: _ImageButton(
+                            asset: 'assets/images/Button.png',
+                            width: buttonWidth,
+                            onTap: widget.onStartPressed,
+                          ),
                         ),
                       ),
                     ),
@@ -311,30 +384,57 @@ class _CornerBug extends StatelessWidget {
   final double size;
   final AnimationController controller;
   final double phaseOffset;
+  final Animation<double>? entrance;
+  final Interval? entranceInterval;
+  final Offset entranceFrom;
 
   const _CornerBug({
     required this.asset,
     required this.size,
     required this.controller,
     this.phaseOffset = 0.0,
+    this.entrance,
+    this.entranceInterval,
+    this.entranceFrom = Offset.zero,
   });
 
   @override
   Widget build(BuildContext context) {
+    final listenables = <Listenable>[controller];
+    if (entrance != null) listenables.add(entrance!);
+
     return AnimatedBuilder(
-      animation: controller,
+      animation: Listenable.merge(listenables),
       builder: (_, __) {
         final t = (controller.value + phaseOffset) % 1.0;
-        final dy =
+        final bobDy =
             (sin(t * 2 * pi) * (size * 0.045).clamp(3.0, 6.0)).toDouble();
+
+        double entranceT = 1.0;
+        if (entrance != null) {
+          final raw = entranceInterval?.transform(entrance!.value) ??
+              entrance!.value;
+          entranceT = raw.clamp(0.0, 1.0);
+        }
+        final remaining = 1.0 - entranceT;
+        final entranceDx = entranceFrom.dx * size * 1.6 * remaining;
+        final entranceDy = entranceFrom.dy * size * 1.6 * remaining;
+        final scale = 0.6 + 0.4 * entranceT;
+
         return Transform.translate(
-          offset: Offset(0, dy),
-          child: Image.asset(
-            asset,
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
+          offset: Offset(entranceDx, entranceDy + bobDy),
+          child: Opacity(
+            opacity: entranceT,
+            child: Transform.scale(
+              scale: scale,
+              child: Image.asset(
+                asset,
+                width: size,
+                height: size,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+              ),
+            ),
           ),
         );
       },
