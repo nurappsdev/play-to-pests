@@ -77,6 +77,7 @@ flutter:
     - assets/audio/pest_pop.wav
     - assets/audio/tap_sound.mp3
     - assets/audio/tap.wav
+    - assets/audio/score_sound.wav
 
   fonts:
     - family: VAGRoundedBold

@@ -505,6 +505,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _isGameRunning = false;
       _generateConfetti();
     });
+    MainBindings.feedbackService.triggerGameOverSound();
     _overlayController.forward();
     _confettiStopwatch
       ..reset()

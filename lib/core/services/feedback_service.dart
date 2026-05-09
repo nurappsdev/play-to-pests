@@ -9,6 +9,7 @@ class FeedbackService {
   FeedbackService._internal();
 
   static const String _tapSoundAsset = 'assets/audio/tap.wav';
+  static const String _gameOverSoundAsset = 'assets/audio/score_sound.wav';
   static const Duration _maxTapSoundLength = Duration(milliseconds: 100);
 
   bool _isInitialized = false;
@@ -16,6 +17,7 @@ class FeedbackService {
 
   final SoLoud _soloud = SoLoud.instance;
   AudioSource? _tapSound;
+  AudioSource? _gameOverSound;
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -25,6 +27,10 @@ class FeedbackService {
       await _soloud.init();
       _tapSound = await _soloud.loadAsset(
         _tapSoundAsset,
+        mode: LoadMode.memory,
+      );
+      _gameOverSound = await _soloud.loadAsset(
+        _gameOverSoundAsset,
         mode: LoadMode.memory,
       );
 
@@ -49,6 +55,16 @@ class FeedbackService {
     _triggerHaptics();
   }
 
+  void triggerGameOverSound() {
+    try {
+      if (_isInitialized && _gameOverSound != null) {
+        _soloud.play(_gameOverSound!, volume: 0.8);
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('Game over sound error: $e');
+    }
+  }
+
   void _triggerHaptics() {
     if (_hasVibrator) {
       Vibration.vibrate(duration: 40);
@@ -63,6 +79,10 @@ class FeedbackService {
     if (_tapSound != null) {
       await _soloud.disposeSource(_tapSound!);
       _tapSound = null;
+    }
+    if (_gameOverSound != null) {
+      await _soloud.disposeSource(_gameOverSound!);
+      _gameOverSound = null;
     }
     _soloud.deinit();
     _isInitialized = false;
