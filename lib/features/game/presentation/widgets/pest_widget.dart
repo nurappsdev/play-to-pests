@@ -7,18 +7,22 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../main_bindings.dart';
 import '../../domain/entities/pest_model.dart';
 
+typedef RecentHitsGetter = List<HitRecord> Function();
+
 class PestWidget extends StatefulWidget {
   static const Duration hitSequenceDuration = Duration(milliseconds: 250);
 
   final PestModel pest;
   final VoidCallback onTap;
   final bool enabled;
+  final RecentHitsGetter? recentHitsGetter;
 
   const PestWidget({
     super.key,
     required this.pest,
     required this.onTap,
     this.enabled = true,
+    this.recentHitsGetter,
   });
 
   @override
@@ -89,12 +93,57 @@ class _PestWidgetState extends State<PestWidget> with TickerProviderStateMixin {
       _changeDirection(elapsed);
     }
 
+    _applyFleeForce();
+
     final driftSpeedMultiplier = widget.pest.driftSpeedMultiplier;
     final jitter = Offset(
       (_random.nextDouble() - 0.5) * 0.00018 * driftSpeedMultiplier,
       (_random.nextDouble() - 0.5) * 0.00018 * driftSpeedMultiplier,
     );
     _driftOffset.value = _driftOffset.value + _velocity + jitter;
+  }
+
+  void _applyFleeForce() {
+    final getter = widget.recentHitsGetter;
+    if (getter == null) return;
+    final hits = getter();
+    if (hits.isEmpty) return;
+
+    final driftSpeedMultiplier = widget.pest.driftSpeedMultiplier;
+    final pestX = widget.pest.alignment.x + _driftOffset.value.dx;
+    final pestY = widget.pest.alignment.y + _driftOffset.value.dy;
+    final now = DateTime.now();
+
+    const fleeRadius = 0.6;
+    const maxAgeMs = 1500;
+    var fleeX = 0.0;
+    var fleeY = 0.0;
+
+    for (var i = 0; i < hits.length; i++) {
+      final hit = hits[i];
+      final ageMs = now.difference(hit.time).inMilliseconds;
+      if (ageMs < 0 || ageMs > maxAgeMs) continue;
+
+      final dx = pestX - hit.x;
+      final dy = pestY - hit.y;
+      final distSq = dx * dx + dy * dy;
+      if (distSq < 0.0001 || distSq > fleeRadius * fleeRadius) continue;
+
+      final dist = math.sqrt(distSq);
+      final proximity = (fleeRadius - dist) / fleeRadius;
+      final ageWeight = 1.0 - (ageMs / maxAgeMs);
+      final strength = proximity * ageWeight * 0.0006 * driftSpeedMultiplier;
+      fleeX += (dx / dist) * strength;
+      fleeY += (dy / dist) * strength;
+    }
+
+    if (fleeX == 0.0 && fleeY == 0.0) return;
+
+    _velocity += Offset(fleeX, fleeY);
+    final maxVelocity = 0.02 * driftSpeedMultiplier;
+    if (_velocity.distance > maxVelocity) {
+      _velocity = _velocity / _velocity.distance * maxVelocity;
+    }
   }
 
   void _executeInstantTapEffects() {

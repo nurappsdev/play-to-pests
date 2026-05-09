@@ -37,15 +37,6 @@ class _ConfettiPiece {
     required this.isSquare,
   });
 }
-class _HitRecord {
-  final double y;
-  final DateTime time;
-
-  _HitRecord({
-    required this.y,
-    required this.time,
-  });
-}
 class _ConfettiPainter extends CustomPainter {
   final List<_ConfettiPiece> pieces;
   final double elapsedSeconds;
@@ -183,7 +174,7 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   static const int _gameDurationSeconds = 30;
   static const int _endPhaseSeconds = 8;
-  final List<_HitRecord> _recentHits = [];
+  final List<HitRecord> _recentHits = [];
   int _topHits = 0;
   int _centerHits = 0;
   int _bottomHits = 0;
@@ -476,7 +467,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     if (index == -1 || _activePests[index].isHit) return;
 
-    final y = _activePests[index].alignment.y;
+    final hitAlignment = _activePests[index].alignment;
 
     _activePests[index].isHit = true;
 
@@ -484,8 +475,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _score++;
 
       _recentHits.add(
-        _HitRecord(
-          y: _activePests[index].alignment.y,
+        HitRecord(
+          x: hitAlignment.x,
+          y: hitAlignment.y,
           time: DateTime.now(),
         ),
       );
@@ -558,6 +550,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   pest: pest,
                   onTap: () => _handleHit(pest.id),
                   enabled: _isGameRunning,
+                  recentHitsGetter: () => _recentHits,
                 ),
               ),
 
