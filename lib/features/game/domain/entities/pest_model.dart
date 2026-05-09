@@ -19,3 +19,15 @@ class PestModel {
     this.isHit = false,
   });
 }
+
+class HitRecord {
+  final double x;
+  final double y;
+  final DateTime time;
+
+  const HitRecord({
+    required this.x,
+    required this.y,
+    required this.time,
+  });
+}
