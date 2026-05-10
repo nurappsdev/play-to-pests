@@ -191,11 +191,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   int _score = 0;
   int _gameTimeRemaining = _gameDurationSeconds;
   bool _isGameRunning = false;
+  bool _showResultButtons = false;
   final List<PestModel> _activePests = [];
   final Random _random = Random();
   int _pestIdCounter = 0;
   Timer? _spawnTimer;
   Timer? _gameCountdownTimer;
+  Timer? _resultButtonsTimer;
 
   // Overlay controllers
   late final AnimationController _overlayController;
@@ -251,6 +253,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _spawnTimer = null;
     _gameCountdownTimer?.cancel();
     _gameCountdownTimer = null;
+    _resultButtonsTimer?.cancel();
+    _resultButtonsTimer = null;
   }
 
   void _generateConfetti() {
@@ -285,6 +289,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _gameTimeRemaining = _gameDurationSeconds;
       _activePests.clear();
       _isGameRunning = true;
+      _showResultButtons = false;
       _confetti = [];
     });
     _startSpawning();
@@ -503,6 +508,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _cleanupTimers();
     setState(() {
       _isGameRunning = false;
+      _showResultButtons = false;
       _generateConfetti();
     });
     MainBindings.feedbackService.triggerGameOverSound();
@@ -511,6 +517,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       ..reset()
       ..start();
     _confettiController.repeat();
+
+    _resultButtonsTimer = Timer(const Duration(milliseconds: 1250), () {
+      if (mounted) setState(() => _showResultButtons = true);
+    });
 
     if (_score > 0) {
       await MainBindings.saveScoreUseCase.execute(
@@ -689,46 +699,60 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
                                 const SizedBox(height: 24),
 
-                                // RETRY button (PNG with press-to-shrink)
-                                TweenAnimationBuilder<double>(
-                                  tween: Tween<double>(begin: 0.8, end: 1.1),
-                                  duration: const Duration(milliseconds: 400),
-                                  builder: (context, scale, child) {
-                                    return Transform.scale(
-                                      scale: scale,
-                                      child: child,
-                                    );
-                                  },
-                                  child: _RetryImageButton(
-                                    asset: 'assets/images/retry_button.png',
-                                    width: 200,
-                                    onTap: _startGame,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
+                                // Retry + Home appear 1s after the result.
+                                AnimatedOpacity(
+                                  opacity: _showResultButtons ? 1.0 : 0.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOut,
+                                  child: IgnorePointer(
+                                    ignoring: !_showResultButtons,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // RETRY button (PNG with press-to-shrink)
+                                        TweenAnimationBuilder<double>(
+                                          tween: Tween<double>(begin: 0.8, end: 1.1),
+                                          duration: const Duration(milliseconds: 400),
+                                          builder: (context, scale, child) {
+                                            return Transform.scale(
+                                              scale: scale,
+                                              child: child,
+                                            );
+                                          },
+                                          child: _RetryImageButton(
+                                            asset: 'assets/images/retry_button.png',
+                                            width: 200,
+                                            onTap: _startGame,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
 
-                                // HOME text button
-                                TweenAnimationBuilder<double>(
-                                  tween: Tween<double>(begin: 0.8, end: 1.1),
-                                  duration: const Duration(milliseconds: 400),
-                                  builder: (context, scale, child) {
-                                    return Transform.scale(
-                                      scale: scale,
-                                      child: child,
-                                    );
-                                  },
-                                  child: TextButton(
-                                    onPressed: widget.onQuitPressed,
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: const Color(0xFF1A1C1E),
-                                    ),
-                                    child: const Text(
-                                      'HOME',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 2,
-                                      ),
+                                        // HOME text button
+                                        TweenAnimationBuilder<double>(
+                                          tween: Tween<double>(begin: 0.8, end: 1.1),
+                                          duration: const Duration(milliseconds: 400),
+                                          builder: (context, scale, child) {
+                                            return Transform.scale(
+                                              scale: scale,
+                                              child: child,
+                                            );
+                                          },
+                                          child: TextButton(
+                                            onPressed: widget.onQuitPressed,
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: const Color(0xFF1A1C1E),
+                                            ),
+                                            child: const Text(
+                                              'HOME',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 2,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
