@@ -1,0 +1,588 @@
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+
+class StartScreen extends StatefulWidget {
+  final VoidCallback onStartPressed;
+
+  const StartScreen({
+    super.key,
+    required this.onStartPressed,
+  });
+
+  @override
+  State<StartScreen> createState() => _StartScreenState();
+}
+
+class _StartScreenState extends State<StartScreen>
+    with TickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final AnimationController _entranceController;
+  late final Animation<double> _titleScale;
+  late final Animation<double> _titleFade;
+  late final Animation<double> _buttonFade;
+  late final Animation<double> _buttonSlide;
+
+  static const _bugYellowInterval = Interval(0.00, 0.55, curve: Curves.easeOutCubic);
+  static const _bugRedInterval = Interval(0.10, 0.65, curve: Curves.easeOutCubic);
+  static const _bugPurpleInterval = Interval(0.20, 0.75, curve: Curves.easeOutCubic);
+  static const _bugGreenInterval = Interval(0.30, 0.85, curve: Curves.easeOutCubic);
+
+  static const _sideConfetti = <_ConfettiPiece>[
+    _ConfettiPiece(
+      x: 0.05,
+      y: 0.05,
+      size: 9,
+      color: Color(0xFFF4D13D),
+      rotation: pi / 5,
+      isSquare: true,
+    ),
+    _ConfettiPiece(
+      x: 0.94,
+      y: 0.06,
+      size: 11,
+      color: Color(0xFFF12A17),
+      rotation: pi / 7,
+      isSquare: false,
+    ),
+    _ConfettiPiece(
+      x: 0.04,
+      y: 0.36,
+      size: 10,
+      color: Color(0xFF9C27B0),
+      rotation: pi / 3,
+      isSquare: false,
+    ),
+    _ConfettiPiece(
+      x: 0.96,
+      y: 0.39,
+      size: 8,
+      color: Color(0xFF87C902),
+      rotation: pi / 4,
+      isSquare: true,
+    ),
+    _ConfettiPiece(
+      x: 0.08,
+      y: 0.46,
+      size: 8,
+      color: Color(0xFFF12A17),
+      rotation: pi / 8,
+      isSquare: true,
+    ),
+    _ConfettiPiece(
+      x: 0.92,
+      y: 0.48,
+      size: 10,
+      color: Color(0xFFF4D13D),
+      rotation: pi / 2.8,
+      isSquare: false,
+    ),
+    _ConfettiPiece(
+      x: 0.05,
+      y: 0.78,
+      size: 11,
+      color: Color(0xFF87C902),
+      rotation: pi / 6,
+      isSquare: false,
+    ),
+    _ConfettiPiece(
+      x: 0.95,
+      y: 0.80,
+      size: 9,
+      color: Color(0xFF9C27B0),
+      rotation: pi / 2,
+      isSquare: true,
+    ),
+    _ConfettiPiece(
+      x: 0.10,
+      y: 0.90,
+      size: 8,
+      color: Color(0xFFF4D13D),
+      rotation: pi / 4,
+      isSquare: true,
+    ),
+    _ConfettiPiece(
+      x: 0.90,
+      y: 0.91,
+      size: 10,
+      color: Color(0xFFF12A17),
+      rotation: pi / 5,
+      isSquare: false,
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
+
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+    _titleScale = Tween<double>(begin: 0.55, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.40, 0.95, curve: Curves.elasticOut),
+      ),
+    );
+    _titleFade = CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.40, 0.70, curve: Curves.easeOut),
+    );
+    _buttonFade = CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.65, 1.0, curve: Curves.easeOut),
+    );
+    _buttonSlide = Tween<double>(begin: 24.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.65, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+    _entranceController.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _entranceController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SizedBox.expand(
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFE6F7F1),
+                Color(0xFFCFEEE3),
+              ],
+            ),
+          ),
+          child: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final height = constraints.maxHeight;
+                final shortestSide = min(width, height);
+                final bugGap = (height * 0.045)
+                    .clamp(16.0, 40.0)
+                    .toDouble();
+
+                final bugSize = min(width * 0.34, height * 0.19)
+                    .clamp(76.0, 140.0)
+                    .toDouble();
+                final sideInset = (width * 0.025).clamp(8.0, 24.0).toDouble();
+                final topBugTop =
+                    (height * 0.12).clamp(24.0, 128.0).toDouble();
+
+                final buttonWidth =
+                    (width * 0.54).clamp(160.0, 230.0).toDouble();
+                final buttonVisualHeight = buttonWidth * 0.42;
+                final buttonBottom =
+                    (height * 0.9).clamp(28.0, 150.0).toDouble();
+
+                final desiredLowerBugBottom = max(
+                  height * 0.28,
+                  buttonBottom + buttonVisualHeight + height * 0.04,
+                );
+                final maxLowerBugBottom = max(0.0, height - bugSize - 16.0);
+                final lowerBugBottom =
+                    min(desiredLowerBugBottom, maxLowerBugBottom).toDouble();
+
+                final titleWidth =
+                    (width * 0.74).clamp(210.0, 360.0).toDouble();
+                final titleHeight =
+                    (height * 0.22).clamp(86.0, 190.0).toDouble();
+                final maxTitleTop = height -
+                    titleHeight -
+                    buttonVisualHeight -
+                    buttonBottom -
+                    24;
+                final titleTop =
+                (height * 0.28)
+                    .clamp(120.0, 260.0)
+                    .toDouble();
+                final topBugY =
+                    titleTop - bugSize - bugGap;
+                final dotSize =
+                    (shortestSide * 0.02).clamp(6.0, 10.0).toDouble();
+                final showLowerBugs = height >= 520;
+                final gap = (height * 0.04)
+                    .clamp(16.0, 36.0)
+                    .toDouble();
+                final lowerBugY =
+                    titleTop + titleHeight + bugGap;
+                final buttonTop =
+                    lowerBugY + bugSize + gap;
+
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _ConfettiPainter(_sideConfetti),
+                      ),
+                    ),
+                    _DecorDot(
+                      top: height * 0.07,
+                      left: width * 0.36,
+                      size: dotSize,
+                      color: const Color(0xFF8BC34A),
+                    ),
+                    _DecorDot(
+                      top: height * 0.12,
+                      right: width * 0.18,
+                      size: dotSize,
+                      color: const Color(0xFF8BC34A),
+                    ),
+                    _DecorDot(
+                      top: height * 0.38,
+                      left: width * 0.08,
+                      size: dotSize,
+                      color: const Color(0xFF8BC34A),
+                    ),
+                    _DecorDot(
+                      top: height * 0.43,
+                      right: width * 0.11,
+                      size: dotSize,
+                      color: const Color(0xFF8BC34A),
+                    ),
+                    _DecorDot(
+                      bottom: height * 0.20,
+                      left: width * 0.12,
+                      size: dotSize,
+                      color: const Color(0xFF8BC34A),
+                    ),
+                    Positioned(
+                      top: topBugY,
+                      left: sideInset,
+                      child:  Transform.scale(
+                        scale: 0.92,
+                        child :_CornerBug(
+                        asset: 'assets/images/Yellow_bug.png',
+                        size: bugSize,
+                        controller: _controller,
+                        entrance: _entranceController,
+                        entranceInterval: _bugYellowInterval,
+                        entranceFrom: const Offset(-1.6, -0.6),
+                      ),
+                    ),
+                ),
+                    Positioned(
+                      top: titleTop - bugSize - bugGap,
+                      right: sideInset,
+                      child: Transform.scale(
+                        scale: 1.2,
+                        child: _CornerBug(
+                          asset: 'assets/images/Red_bug.png',
+                          size: bugSize,
+                          controller: _controller,
+                          phaseOffset: 0.35,
+                          entrance: _entranceController,
+                          entranceInterval: _bugRedInterval,
+                          entranceFrom: const Offset(1.6, -0.6),
+                        ),
+                      ),
+                    ),
+                    if (showLowerBugs)
+                      Positioned(
+                        top: lowerBugY,
+                        left: sideInset,
+                        child: Transform.scale(
+                          scale: 1.10,
+                          child: _CornerBug(
+                            asset: 'assets/images/Purple_bug.png',
+                            size: bugSize,
+                            controller: _controller,
+                            phaseOffset: 0.6,
+                            entrance: _entranceController,
+                            entranceInterval: _bugPurpleInterval,
+                            entranceFrom: const Offset(-1.6, 0.8),
+                          ),
+                        ),
+                      ),
+                    if (showLowerBugs)
+                      Positioned(
+                        top: lowerBugY,
+                        right: sideInset,
+                        child: Transform.scale(
+                          scale: 1.26, // increase size (0.8 = smaller, 1.3 = bigger)
+                          child: _CornerBug(
+                            asset: 'assets/images/Green_bug.png',
+                            size: bugSize,
+                            controller: _controller,
+                            phaseOffset: 0.85,
+                            entrance: _entranceController,
+                            entranceInterval: _bugGreenInterval,
+                            entranceFrom: const Offset(1.6, 0.8),
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      top: titleTop ,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: AnimatedBuilder(
+                          animation: _entranceController,
+                          builder: (_, child) {
+                            return Opacity(
+                              opacity: _titleFade.value,
+                              child: Transform.scale(
+                                scale: _titleScale.value,
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: SizedBox(
+                            width: titleWidth,
+                            height: titleHeight,
+                            child: Image.asset(
+                              'assets/images/Text.png',
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.high,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: buttonTop,
+                      child: Center(
+                        child: AnimatedBuilder(
+                          animation: _entranceController,
+                          builder: (_, child) {
+                            return Opacity(
+                              opacity: _buttonFade.value,
+                              child: Transform.translate(
+                                offset: Offset(0, _buttonSlide.value),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: _ImageButton(
+                            asset: 'assets/images/Button.png',
+                            width: buttonWidth,
+                            onTap: widget.onStartPressed,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CornerBug extends StatelessWidget {
+  final String asset;
+  final double size;
+  final AnimationController controller;
+  final double phaseOffset;
+  final Animation<double>? entrance;
+  final Interval? entranceInterval;
+  final Offset entranceFrom;
+
+  const _CornerBug({
+    required this.asset,
+    required this.size,
+    required this.controller,
+    this.phaseOffset = 0.0,
+    this.entrance,
+    this.entranceInterval,
+    this.entranceFrom = Offset.zero,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final listenables = <Listenable>[controller];
+    if (entrance != null) listenables.add(entrance!);
+
+    return AnimatedBuilder(
+      animation: Listenable.merge(listenables),
+      builder: (_, __) {
+        final t = (controller.value + phaseOffset) % 1.0;
+        final bobDy =
+            (sin(t * 2 * pi) * (size * 0.045).clamp(3.0, 6.0)).toDouble();
+
+        double entranceT = 1.0;
+        if (entrance != null) {
+          final raw = entranceInterval?.transform(entrance!.value) ??
+              entrance!.value;
+          entranceT = raw.clamp(0.0, 1.0);
+        }
+        final remaining = 1.0 - entranceT;
+        final entranceDx = entranceFrom.dx * size * 1.6 * remaining;
+        final entranceDy = entranceFrom.dy * size * 1.6 * remaining;
+        final scale = 0.6 + 0.4 * entranceT;
+
+        return Transform.translate(
+          offset: Offset(entranceDx, entranceDy + bobDy),
+          child: Opacity(
+            opacity: entranceT,
+            child: Transform.scale(
+              scale: scale,
+              child: Image.asset(
+                asset,
+                width: size,
+                height: size,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ImageButton extends StatefulWidget {
+  final String asset;
+  final double width;
+  final VoidCallback onTap;
+
+  const _ImageButton({
+    required this.asset,
+    required this.width,
+    required this.onTap,
+  });
+
+  @override
+  State<_ImageButton> createState() => _ImageButtonState();
+}
+
+class _ImageButtonState extends State<_ImageButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 80),
+        child: Image.asset(
+          widget.asset,
+          width: widget.width,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+        ),
+      ),
+    );
+  }
+}
+
+class _ConfettiPiece {
+  final double x;
+  final double y;
+  final double size;
+  final Color color;
+  final double rotation;
+  final bool isSquare;
+
+  const _ConfettiPiece({
+    required this.x,
+    required this.y,
+    required this.size,
+    required this.color,
+    required this.rotation,
+    required this.isSquare,
+  });
+}
+
+class _ConfettiPainter extends CustomPainter {
+  final List<_ConfettiPiece> pieces;
+
+  _ConfettiPainter(this.pieces);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final p in pieces) {
+      canvas.save();
+      canvas.translate(p.x * size.width, p.y * size.height);
+      canvas.rotate(p.rotation);
+      final paint = Paint()..color = p.color;
+      if (p.isSquare) {
+        canvas.drawRect(
+          Rect.fromCenter(center: Offset.zero, width: p.size, height: p.size),
+          paint,
+        );
+      } else {
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: p.size,
+            height: p.size * 0.5,
+          ),
+          paint,
+        );
+      }
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ConfettiPainter old) => !identical(old.pieces, pieces);
+}
+
+class _DecorDot extends StatelessWidget {
+  final double? top;
+  final double? left;
+  final double? right;
+  final double? bottom;
+  final double size;
+  final Color color;
+
+  const _DecorDot({
+    this.top,
+    this.left,
+    this.right,
+    this.bottom,
+    this.size = 8,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: top,
+      left: left,
+      right: right,
+      bottom: bottom,
+      child: Transform.rotate(
+        angle: pi / 4,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(size * 0.25),
+          ),
+        ),
+      ),
+    );
+  }
+}
