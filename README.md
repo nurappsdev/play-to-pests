@@ -27,7 +27,7 @@ flutter run
 ```text
 main.dart
   -> MainBindings.init()
-  -> TapToPestsApp
+  -> SmashStressApp
   -> MainScreenController
   -> StartScreen
   -> GameScreen
