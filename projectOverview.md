@@ -1,11 +1,11 @@
 # Project Overview
 
-This project is a Flutter arcade game called Tap To Pests. The player starts from a splash/start screen, enters a timed game session, taps moving pests to score points, then sees a game-over overlay with retry and home actions. Scores are saved locally in SQLite through a small repository/use-case layer.
+This project is a Flutter arcade game called Smash Stress. The player starts from a splash/start screen, enters a timed game session, taps moving pests to score points, then sees a game-over overlay with retry and home actions. Scores are saved locally in SQLite through a small repository/use-case layer.
 
 ## Runtime Flow
 
-1. `main.dart` initializes Flutter, locks orientation to portrait, initializes app bindings, then runs `TapToPestsApp`.
-2. `TapToPestsApp` builds a `MaterialApp` and shows `MainScreenController` as the first screen.
+1. `main.dart` initializes Flutter, locks orientation to portrait, initializes app bindings, then runs `SmashStressApp`.
+2. `SmashStressApp` builds a `MaterialApp` and shows `MainScreenController` as the first screen.
 3. `MainScreenController` controls which screen is visible using `AppState`.
 4. `StartScreen` shows the start background and start button.
 5. `GameScreen` starts a 30-second game automatically, spawns pests, tracks score/time, and saves the final score.
@@ -17,7 +17,7 @@ This project is a Flutter arcade game called Tap To Pests. The player starts fro
 | File | Purpose |
 | --- | --- |
 | `lib/main.dart` | App entry point. Initializes bindings, locks portrait mode, and runs the app. |
-| `lib/app.dart` | Defines `TapToPestsApp`, the root `MaterialApp`, theme, and home widget. |
+| `lib/app.dart` | Defines `SmashStressApp`, the root `MaterialApp`, theme, and home widget. |
 | `lib/main_bindings.dart` | Manual dependency setup for database, score use cases, repository, datasource, and feedback service. |
 | `pubspec.yaml` | Declares Flutter dependencies and asset folders for images/audio. |
 
@@ -25,13 +25,13 @@ This project is a Flutter arcade game called Tap To Pests. The player starts fro
 
 | Function | What it does |
 | --- | --- |
-| `main()` | Calls `WidgetsFlutterBinding.ensureInitialized()`, locks portrait orientation with `SystemChrome.setPreferredOrientations`, awaits `MainBindings.init()`, then starts `TapToPestsApp`. |
+| `main()` | Calls `WidgetsFlutterBinding.ensureInitialized()`, locks portrait orientation with `SystemChrome.setPreferredOrientations`, awaits `MainBindings.init()`, then starts `SmashStressApp`. |
 
 ### `app.dart`
 
 | Class/widget | What it does |
 | --- | --- |
-| `TapToPestsApp` | Root stateless widget. Creates the `MaterialApp`, disables debug banner, sets a Material 3 light theme, and loads `MainScreenController`. |
+| `SmashStressApp` | Root stateless widget. Creates the `MaterialApp`, disables debug banner, sets a Material 3 light theme, and loads `MainScreenController`. |
 
 ### `main_bindings.dart`
 

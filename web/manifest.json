@@ -1,6 +1,6 @@
 {
-    "name": "taptopests",
-    "short_name": "taptopests",
+    "name": "smashestress",
+    "short_name": "smashestress",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
